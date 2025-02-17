@@ -13,56 +13,53 @@ folder_path_oct = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data p
 folder_path_nov = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\Nov"
 folder_path_dec = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\Dec"
 
-thickness_dict = defaultdict(list)
+def get_data(path):
+    thickness_dict = defaultdict(list)
+    latitudes = []  
+    longitudes = []  
+    mean_sea_ice_thickness = [] 
 
-#print(data.variables.keys())
+    for filename in os.listdir(path):
+        if filename.endswith(".nc"):
+            file_path = os.path.join(path, filename)
 
-for filename in os.listdir(folder_path_oct):
-    if filename.endswith(".nc"):
-        data = os.path.join(folder_path_oct, filename)
-        
-        with nc.Dataset(data) as dataset:
-            if 'latitude' in dataset.variables and 'longitude' in dataset.variables and 'sea_ice_thickness' in dataset.variables:
-                latitude = np.array(dataset.variables['latitude'][:]).flatten()
-                longitude = np.array(dataset.variables['longitude'][:]).flatten()
-                sea_ice_thickness = np.array(dataset.variables['sea_ice_thickness'][:]).flatten()
-                
-                mask = ~np.isnan(sea_ice_thickness) & ~np.isnan(latitude) & ~np.isnan(longitude)
-                latitude, longitude, sea_ice_thickness = latitude[mask], longitude[mask], sea_ice_thickness[mask]
-                
-                for lat, lon, thickness in zip(latitude, longitude, sea_ice_thickness):
-                    thickness_dict[(lat, lon)].append(thickness)
-                    
-latitude, longitude, mean_thickness = [], [], []
+            dataset = nc.Dataset(file_path)
 
-for (lat, lon), values in thickness_dict.items():
-    latitude.append(lat)
-    longitude.append(lon)
-    mean_thickness.append(np.mean(values))
+            lat_data = np.array(dataset.variables['latitude'][:]).flatten()
+            lon_data = np.array(dataset.variables['longitude'][:]).flatten()
+            sea_ice_thickness_data = np.array(dataset.variables['sea_ice_thickness'][:]).flatten()
+
+            mask = ~np.isnan(sea_ice_thickness_data) & ~np.isnan(lat_data) & ~np.isnan(lon_data)
+            lat_data, lon_data, sea_ice_thickness_data = lat_data[mask], lon_data[mask], sea_ice_thickness_data[mask]
+
+            mask = (sea_ice_thickness_data != -999.0) & (sea_ice_thickness_data != 0.0)
+            lat_data, lon_data, sea_ice_thickness_data = lat_data[mask], lon_data[mask], sea_ice_thickness_data[mask]
+
+            for lat, lon, thickness in zip(lat_data, lon_data, sea_ice_thickness_data):
+                thickness_dict[(lat, lon)].append(thickness)
+
+    # Compute mean sea ice thickness for each lat-lon pair
+    for (lat, lon), values in thickness_dict.items():
+        latitudes.append(lat)
+        longitudes.append(lon)
+        mean_sea_ice_thickness.append(np.mean(values))
+
+    return latitudes, longitudes, mean_sea_ice_thickness
+
+def single_figure(latitudes, longitudes, mean_sea_ice_thickness):
+    fig = plt.figure(figsize=(10, 10))
     
+    ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
+    ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
+    ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5)
+    ax.add_feature(cfeature.LAND, color='lightgray', alpha=0.5)
+    ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5)
     
-latitudes = np.array(latitude)
-longitudes = np.array(longitude)
-mean_thickness = np.array(mean_thickness)
-
-# --- Plotting ---
-fig = plt.figure(figsize=(10, 10))
-ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
-
-# Define map extent
-ax.set_extent([-180, 180, 60, 90], crs=ccrs.PlateCarree())
-
-# Add features
-ax.add_feature(cfeature.LAND, color='lightgray')
-ax.coastlines(resolution='50m')
-
-# Scatter plot of mean sea ice thickness
-sc = ax.scatter(longitudes, latitudes, c=mean_thickness, s=10, cmap='viridis', transform=ccrs.PlateCarree())
-
-# Add colorbar
-cbar = plt.colorbar(sc, ax=ax, orientation='vertical', shrink=0.7)
-cbar.set_label("Mean Sea Ice Thickness (m)")
-
-# Show plot
-plt.title("Mean Sea Ice Thickness Across Multiple Files")
-plt.show()
+    sc = ax.scatter(longitudes, latitudes, c=mean_sea_ice_thickness, s=1, cmap='viridis', vmin=0, vmax=1 ,transform=ccrs.PlateCarree())
+    
+    plt.colorbar(sc, label='Sea Ice Thickness (m)')
+    plt.show()
+    
+latitudes, longitudes, mean_sea_ice_thickness = get_data(folder_path_oct)
+single_figure(latitudes, longitudes, mean_sea_ice_thickness)
+            

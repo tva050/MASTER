@@ -4,12 +4,11 @@ from scipy.spatial import cKDTree
 import matplotlib.pyplot as plt
 from cartopy import crs as ccrs, feature as cfeature
 import netCDF4 as nc
-from mpl_toolkits.basemap import Basemap
 
 
-oct_path = "C:\\Users\\trym7\\OneDrive - UiT Office 365\\skole\\MASTER\\Data processing\\Data\\uit_cryosat2_L3_EASE2_nh25km_2023_10_v3.nc"
-nov_path = "C:\\Users\\trym7\\OneDrive - UiT Office 365\\skole\\MASTER\\Data processing\\Data\\uit_cryosat2_L3_EASE2_nh25km_2023_11_v3.nc"
-dec_path = "C:\\Users\\trym7\\OneDrive - UiT Office 365\\skole\\MASTER\\Data processing\\Data\\uit_cryosat2_L3_EASE2_nh25km_2023_12_v3.nc"
+oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\uit_cryosat2_L3_EASE2_nh25km_2023_10_v3.nc"
+nov_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\uit_cryosat2_L3_EASE2_nh25km_2023_11_v3.nc"
+dec_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\uit_cryosat2_L3_EASE2_nh25km_2023_12_v3.nc"
 
 
 
