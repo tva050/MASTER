@@ -6,6 +6,7 @@ from cartopy import crs as ccrs, feature as cfeature
 import netCDF4 as nc
 from mpl_toolkits.basemap import Basemap
 from collections import defaultdict
+import time
 
 path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\Oct\SMOS_Icethickness_v3.3_north_20231021.nc"
 
@@ -59,7 +60,36 @@ def single_figure(latitudes, longitudes, mean_sea_ice_thickness):
     
     plt.colorbar(sc, label='Sea Ice Thickness (m)')
     plt.show()
-    
-latitudes, longitudes, mean_sea_ice_thickness = get_data(folder_path_oct)
+
+def save_to_nc(latitudes, longitudes, mean_sea_ice_thickness, output_path):
+    # creates an new nc file with the mean sea ice thickness data from the SMOS data for one month
+    # with an column for latitude, longitude and mean sea ice thickness
+    with nc.Dataset(output_path, "w", format="NETCDF4") as dataset:
+        dataset.createDimension("lat", len(latitudes))
+        dataset.createDimension("lon", len(longitudes))
+        dataset.createDimension("mean_sea_ice_thickness", len(mean_sea_ice_thickness))
+        
+        latitudes_var = dataset.createVariable("latitude", "f4", ("lat",))
+        longitudes_var = dataset.createVariable("longitude", "f4", ("lon",))
+        mean_sea_ice_thickness_var = dataset.createVariable("mean_sea_ice_thickness", "f4", ("mean_sea_ice_thickness",))
+        
+        latitudes_var[:] = latitudes
+        longitudes_var[:] = longitudes
+        mean_sea_ice_thickness_var[:] = mean_sea_ice_thickness
+        
+        dataset.description = "SMOS data for one month"
+        dataset.history = "Created " + time.ctime(time.time())
+        dataset.source = "SMOS data"
+        
+        latitudes_var.units = "degrees_north"
+        longitudes_var.units = "degrees_east"
+        mean_sea_ice_thickness_var.units = "m"
+        
+        print(f"Data saved to {output_path}")
+        
+
+latitudes, longitudes, mean_sea_ice_thickness = get_data(folder_path_dec)
 single_figure(latitudes, longitudes, mean_sea_ice_thickness)
-            
+
+output_file = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\mean_sea_ice_thickness_dec.nc"            
+save_to_nc(latitudes, longitudes, mean_sea_ice_thickness, output_file)
