@@ -16,7 +16,7 @@ si_thickness = data.variables['sea_ice_thickness'][:]
 # Check if lat and lon are 1D and need reshaping
 if lat.ndim == 1 and lon.ndim == 1:
     lon, lat = np.meshgrid(lon, lat)
-    print('Reshaped lat and lon')5
+    print('Reshaped lat and lon')
 # Mask invalid data
 mask = ~np.isnan(si_thickness)
 filtered_si_thickness = np.where(mask, si_thickness, np.nan)
