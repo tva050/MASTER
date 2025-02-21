@@ -49,65 +49,19 @@ def SMOS_read_data(path):
     return lat, lon, si_thickness
 
 
-def comp_all_months2():
-    # Compares the SIT for three different months from CryoSat-2 and SMOS
-    cryo_oct_lat, cryo_oct_lon, cryo_oct_si_thickness, cryo_oct_si_thickness_uncertainty = CryoSat2_read_data(cryo_oct_path)
-    cryo_nov_lat, cryo_nov_lon, cryo_nov_si_thickness, cryo_nov_si_thickness_uncertainty = CryoSat2_read_data(cryo_nov_path)
-    cryo_dec_lat, cryo_dec_lon, cryo_dec_si_thickness, cryo_dec_si_thickness_uncertainty = CryoSat2_read_data(cryo_dec_path)
-    
-    smos_oct_lat, smos_oct_lon, smos_oct_si_thickness = SMOS_read_data(smos_oct_path)
-    smos_nov_lat, smos_nov_lon, smos_nov_si_thickness = SMOS_read_data(smos_nov_path)
-    smos_dec_lat, smos_dec_lon, smos_dec_si_thickness = SMOS_read_data(smos_dec_path)
-    
-    # Create figure with 6 subplots with 3 for CryoSat-2 and 3 for SMOS
-    fig, ax = plt.subplots(3, 2, subplot_kw={'projection': ccrs.NorthPolarStereo()})
-    plt.subplots_adjust(wspace=0.0, hspace=0.2, right=0.85)
-    
-    # Titles for columns
-    #ax[0, 0].set_title("SMOS", fontsize=14, fontweight="bold")
-    #ax[0, 1].set_title("CryoSat-2", fontsize=14, fontweight="bold")
-    
-    # Month labels (left side)
-    """ month_labels = ["October", "November", "December"]
-    for i, label in enumerate(month_labels):
-        ax[i, 0].text(-4.5e6, 0, label, fontsize=14, fontweight="bold", rotation=90, ha='center', va='center', transform=ccrs.PlateCarree())
- """
-    # Define scatter plots for SMOS (left) and CryoSat-2 (right)
-    data_pairs = [
-        (smos_oct_lon, smos_oct_lat, smos_oct_si_thickness, ax[0, 0]),
-        (cryo_oct_lon, cryo_oct_lat, cryo_oct_si_thickness, ax[0, 1]),
-        (smos_nov_lon, smos_nov_lat, smos_nov_si_thickness, ax[1, 0]),
-        (cryo_nov_lon, cryo_nov_lat, cryo_nov_si_thickness, ax[1, 1]),
-        (smos_dec_lon, smos_dec_lat, smos_dec_si_thickness, ax[2, 0]),
-        (cryo_dec_lon, cryo_dec_lat, cryo_dec_si_thickness, ax[2, 1])
-    ]
 
-    # Plot data
-    for lon, lat, thickness, axis in data_pairs:
-        axis.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
-        axis.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5)
-        axis.add_feature(cfeature.LAND, color='lightgray', alpha=0.5)
-        axis.add_feature(cfeature.COASTLINE, color="gray", linewidth=0.5)
-        sc = axis.scatter(lon, lat, c=thickness, s=1, cmap='viridis', vmin=0, vmax=1, transform=ccrs.PlateCarree())
+# extract data from the netCDF files using the functions above 
+cryo_oct_lat, cryo_oct_lon, cryo_oct_si_thickness, cryo_oct_si_thickness_uncertainty = CryoSat2_read_data(cryo_oct_path)
+cryo_nov_lat, cryo_nov_lon, cryo_nov_si_thickness, cryo_nov_si_thickness_uncertainty = CryoSat2_read_data(cryo_nov_path)
+cryo_dec_lat, cryo_dec_lon, cryo_dec_si_thickness, cryo_dec_si_thickness_uncertainty = CryoSat2_read_data(cryo_dec_path)
 
-    
-    # Add a single colorbar for the entire figure
-    #cbar = fig.colorbar(sc, ax=ax[:, :], orientation='vertical', label='Sea Ice Thickness (m)', pad=0.05, aspect=50)
-    cbar_ax = fig.add_axes([0.88, 0.15, 0.02, 0.7])  # [left, bottom, width, height]
-    fig.colorbar(sc, cax=cbar_ax, label='Sea Ice Thickness (m)') 
-    plt.tight_layout()
-    plt.show()
-    
+smos_oct_lat, smos_oct_lon, smos_oct_si_thickness = SMOS_read_data(smos_oct_path)
+smos_nov_lat, smos_nov_lon, smos_nov_si_thickness = SMOS_read_data(smos_nov_path)
+smos_dec_lat, smos_dec_lon, smos_dec_si_thickness = SMOS_read_data(smos_dec_path)
+
+
+
 def comp_all_months():
-    # Compares the SIT for three different months from CryoSat-2 and SMOS
-    cryo_oct_lat, cryo_oct_lon, cryo_oct_si_thickness, cryo_oct_si_thickness_uncertainty = CryoSat2_read_data(cryo_oct_path)
-    cryo_nov_lat, cryo_nov_lon, cryo_nov_si_thickness, cryo_nov_si_thickness_uncertainty = CryoSat2_read_data(cryo_nov_path)
-    cryo_dec_lat, cryo_dec_lon, cryo_dec_si_thickness, cryo_dec_si_thickness_uncertainty = CryoSat2_read_data(cryo_dec_path)
-    
-    smos_oct_lat, smos_oct_lon, smos_oct_si_thickness = SMOS_read_data(smos_oct_path)
-    smos_nov_lat, smos_nov_lon, smos_nov_si_thickness = SMOS_read_data(smos_nov_path)
-    smos_dec_lat, smos_dec_lon, smos_dec_si_thickness = SMOS_read_data(smos_dec_path)
-    
     fig = plt.figure(figsize=(8 , 10)) # figsize=(width, height)
     
     # Define axis positions: [left, bottom, width, height]
@@ -158,5 +112,9 @@ def comp_all_months():
     fig.colorbar(sc_smos, cax=cbar_ax, label='Sea Ice Thickness (m)')
 
     plt.show()
+
+def regions():
     
-comp_all_months()
+
+if __name__ == "__main__":
+    #comp_all_months2()

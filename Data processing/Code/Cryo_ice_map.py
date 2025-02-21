@@ -11,92 +11,64 @@ nov_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processi
 dec_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_12_v3.nc"
 
 
-
-def get_data_LARM(path):
-    # Load data from netCDF file, filter out invalid values and return the filtered data
+def get_data(path):
     data = nc.Dataset(path)
-    
-    #print(data.variables.keys())
     
     lat = data.variables['latitude'][:]
     lon = data.variables['longitude'][:]
     si_thickness = data.variables['sea_ice_thickness'][:]
-    si_thickness_uncertainty = data.variables['sea_ice_thickness_uncertainty'][:]
-    
-    mask = ~np.isnan(si_thickness) & ~np.isnan(si_thickness_uncertainty) & ~np.isnan(lat) & ~np.isnan(lon)
-    
-    filtered_lat = lat[mask]
-    filtered_lon = lon[mask]
-    filtered_si_thickness = si_thickness[mask]
-    filtered_si_thickness_uncertainty = si_thickness_uncertainty[mask]
-    return filtered_lat, filtered_lon, filtered_si_thickness, filtered_si_thickness_uncertainty
+    # Check if lat and lon are 1D and need reshaping
+    if lat.ndim == 1 and lon.ndim == 1:
+        lon, lat = np.meshgrid(lon, lat)
+        print('Reshaped lat and lon')
+    # Mask invalid data
+    mask = ~np.isnan(si_thickness)
+    filtered_si_thickness = np.where(mask, si_thickness, np.nan)
+    return lat, lon, filtered_si_thickness
 
 
-def single_figure(filtered_lat, filtered_lon, filtered_si_thickness, filtered_si_thickness_uncertainty):
-    fig = plt.figure(figsize=(10, 10))
-    
-    ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
+def write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness):
+    with open('filtered_data.txt', 'w') as f:
+        for i in range(len(filtered_lat)):
+            f.write(f'{filtered_lat[i]} {filtered_lon[i]} {filtered_si_thickness[i]}\n')
+
+
+def single_figure(lat, lon, si_thickness):
+    fig, ax = plt.subplots(subplot_kw={'projection': ccrs.NorthPolarStereo()})
     ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
     ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5)
     ax.add_feature(cfeature.LAND, color='lightgray', alpha=0.5)
     ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5)
+   
+    mesh = ax.pcolormesh(lon, lat, si_thickness, transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1)
     
-    sc = ax.scatter(filtered_lon, filtered_lat, c=filtered_si_thickness, s=1, cmap='viridis', vmin=0, vmax=4 ,transform=ccrs.PlateCarree())
+    cbar = plt.colorbar(mesh, orientation='vertical')
+    cbar.set_label('Sea Ice Thickness (m)')
     
-    plt.colorbar(sc, label='Sea Ice Thickness (m)')
+    plt.title('Sea Ice Thickness')
     plt.show()
 
 
-""" def single_figure1(filtered_lat, filtered_lon, filtered_si_thickness, filtered_si_thickness_uncertainty):
-    fig = plt.figure(figsize=(10, 8))
+def zoomed_figure(lat, lon, si_thickness):
+    fig = plt.figure(figsize=(10, 10))
+    
     ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
-    ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
+    ax.set_extent([-1e6, 1e6, -1e6, 1e6], crs=ccrs.NorthPolarStereo())
     ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5)
     ax.add_feature(cfeature.LAND, color='lightgray', alpha=0.5)
     ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5)
     
-    pcm = ax.pcolormesh(filtered_lon, filtered_lat, filtered_si_thickness, cmap='viridis', transform=ccrs.PlateCarree())
-    cbar = plt.colorbar(pcm, label='Sea Ice Thickness (m)')
-    plt.show() """
-
-def single_figure1(filtered_lat, filtered_lon, filtered_si_thickness, filtered_si_thickness_uncertainty):
-    max_si_thickness = 1
-    min_si_thickness = 0
-    fig = plt.figure(figsize=(10, 8))
-    ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
-    ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
-
-    # Add map features
-    ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5)
-    ax.add_feature(cfeature.LAND, color='lightgray', alpha=0.5)
-    ax.add_feature(cfeature.COASTLINE, color="gray", linewidth=0.5)
-
-    # Create a grid
-    grid_x, grid_y = np.meshgrid(
-        np.linspace(min(filtered_lon), max(filtered_lon), 100),
-        np.linspace(min(filtered_lat), max(filtered_lat), 100)
-    )
-
-    # Interpolate thickness data onto the grid
-    grid_si_thickness = griddata(
-        (filtered_lon, filtered_lat), filtered_si_thickness, (grid_x, grid_y), method='linear'
-    )
-
-    # Plot with pcolormesh
-    pcm = ax.pcolormesh(grid_x, grid_y, grid_si_thickness, cmap='viridis', transform=ccrs.PlateCarree(), vmin=min_si_thickness, vmax=max_si_thickness)
-
-    # Add colorbar
-    cbar = plt.colorbar(pcm, ax=ax, orientation='vertical', pad=0.05)
-    cbar.set_label('Sea Ice Thickness (m)')
-
+    sc = ax.pcolormesh(lon, lat, si_thickness, transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1)
+    
+    plt.colorbar(sc, label='Sea Ice Thickness (m)')
     plt.show()
 
 def compare_months_LARM(oct_path, nov_path, dec_path):
     # Compares the SIT for three different months from the same satellite CryoSat-2
     
-    oct_lat, oct_lon, oct_si_thickness, oct_si_thickness_uncertainty = get_data_LARM(oct_path)
-    nov_lat, nov_lon, nov_si_thickness, nov_si_thickness_uncertainty = get_data_LARM(nov_path)
-    dec_lat, dec_lon, dec_si_thickness, dec_si_thickness_uncertainty = get_data_LARM(dec_path)
+    oct_lat, oct_lon, oct_si_thickness = get_data(oct_path)
+    nov_lat, nov_lon, nov_si_thickness = get_data(nov_path)
+    dec_lat, dec_lon, dec_si_thickness = get_data(dec_path)
     
     # Create figure with 3 subplots
     fig, ax = plt.subplots(1, 3, subplot_kw={'projection': ccrs.NorthPolarStereo()})
@@ -113,21 +85,21 @@ def compare_months_LARM(oct_path, nov_path, dec_path):
         
         
     # Add data to each subplot
-    sc1 = ax[0].scatter(oct_lon, oct_lat, c=oct_si_thickness, s=1, cmap='viridis', vmin=0, vmax=1, transform=ccrs.PlateCarree())
-    sc2 = ax[1].scatter(nov_lon, nov_lat, c=nov_si_thickness, s=1, cmap='viridis', vmin=0, vmax=1, transform=ccrs.PlateCarree())
-    sc3 = ax[2].scatter(dec_lon, dec_lat, c=dec_si_thickness, s=1, cmap='viridis', vmin=0, vmax=1, transform=ccrs.PlateCarree())
-    
-    
+    sc1 = ax[0].pcolormesh(oct_lon, oct_lat, oct_si_thickness, transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1)
+    sc2 = ax[1].pcolormesh(nov_lon, nov_lat, nov_si_thickness, transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1)
+    sc3 = ax[2].pcolormesh(dec_lon, dec_lat, dec_si_thickness, transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1)
     
     # Add an overall colorbar
     fig.colorbar(sc3, ax=ax, orientation='horizontal', label='Sea Ice Thickness (m)', pad=0.05, aspect=50)
-    
     plt.show()
     
 
 
 
 if __name__ == "__main__":
-    #single_figure(*get_data_LARM(oct_path))
-    single_figure1(*get_data_LARM(oct_path))
-    #compare_months_LARM(oct_path, nov_path, dec_path)
+    lat, lon, si_thickness = get_data(oct_path)
+    #write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness)
+    #single_figure(lat, lon, si_thickness)
+    #single_figure(filtered_lat, filtered_lon, filtered_si_thickness)
+    #zoomed_figure(filtered_lat, filtered_lon, filtered_si_thickness, filtered_si_thickness_uncertainty)
+    compare_months_LARM(oct_path, nov_path, dec_path)
