@@ -86,7 +86,7 @@ def store_to_file(lon, lat, si_thickness, output_file):
 
 
 if __name__ == "__main__":
-    folder_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2024\oct"
+    folder_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2022\oct"
     output_file = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\monthly_mean_thickness.nc"
     
     lat, lon, si_thickness = get_data(folder_path)

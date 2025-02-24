@@ -8,7 +8,7 @@ import cartopy.feature as cfeature
 import time
 
 
-folder_path_oct = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2022\dec"
+folder_path_oct = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2022\oct"
 folder_path_nov = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2022\nov"
 folder_path_dec = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2022\dec"
 
@@ -28,6 +28,7 @@ def get_data(folder_path):
                 # Filter out NaN, -999.0, and 0.0 values
                 mask = ~np.isnan(si_thickness) & (si_thickness != -999.0) & (si_thickness != 0.0)
                 si_thickness = np.where(mask, si_thickness, np.nan)
+                
                 
                 # Store the thickness data
                 si_tickness_data.append(si_thickness)
@@ -93,5 +94,5 @@ def store_to_file(lon, lat, si_thickness, output_file):
 
 if __name__ == "__main__":
     lat, lon, monthly_mean_thickness = get_data(folder_path_dec)
-    #plot_data(lon, lat, monthly_mean_thickness_oct)
-    store_to_file(lon, lat, monthly_mean_thickness, r'C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2022\dec_mean_thickness.nc')
+    plot_data(lon, lat, monthly_mean_thickness)
+    #store_to_file(lon, lat, monthly_mean_thickness, r'C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2022\oct_mean_thickness.nc')

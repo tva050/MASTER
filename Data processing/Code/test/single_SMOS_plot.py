@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2024\oct\SMOS_Icethickness_v3.3_north_20221015.nc"
+
 def get_data(path):    
     data = nc.Dataset(path)
     print(data.variables.keys())
@@ -19,6 +20,8 @@ def get_data(path):
     filtered_si_thickness = np.where(mask, si_thickness, np.nan)
     
     return lat, lon, filtered_si_thickness
+
+
 lat, lon, si_thickness = get_data(path)
 # Check if lon and lat are already 2D
 if lon.ndim == 1 and lat.ndim == 1:
