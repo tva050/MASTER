@@ -36,12 +36,13 @@ def write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness):
 def single_figure(lat, lon, si_thickness):
     fig, ax = plt.subplots(subplot_kw={'projection': ccrs.NorthPolarStereo()})
     ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
-    ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5)
-    ax.add_feature(cfeature.LAND, color='lightgray', alpha=0.5)
-    ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5)
-   
-    mesh = ax.pcolormesh(lon, lat, si_thickness, transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1)
+ 
+    mesh = ax.pcolormesh(lon, lat, si_thickness, transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1, zorder=1)
     
+    ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
+    ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
+    ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5, zorder=4)
+   
     cbar = plt.colorbar(mesh, orientation='vertical')
     cbar.set_label('Sea Ice Thickness (m)')
     
@@ -99,7 +100,7 @@ def compare_months_LARM(oct_path, nov_path, dec_path):
 if __name__ == "__main__":
     lat, lon, si_thickness = get_data(oct_path)
     #write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness)
-    #single_figure(lat, lon, si_thickness)
+    single_figure(lat, lon, si_thickness)
     #single_figure(filtered_lat, filtered_lon, filtered_si_thickness)
     #zoomed_figure(filtered_lat, filtered_lon, filtered_si_thickness, filtered_si_thickness_uncertainty)
-    compare_months_LARM(oct_path, nov_path, dec_path)
+    #compare_months_LARM(oct_path, nov_path, dec_path)

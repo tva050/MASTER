@@ -5,54 +5,90 @@ import netCDF4 as nc
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-# Path to the folder containing the daily files
-folder_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2024\dec"
-# Initialize lists to store daily means
-daily_means = []
-# Loop through each file in the folder
-for filename in os.listdir(folder_path):
-    if filename.endswith('.nc'):  # Assuming the files are NetCDF
-        file_path = os.path.join(folder_path, filename)
+import time
+
+
+def get_data(folder_path):
+    # Initialize lists to store daily data
+    si_tickness_data = []
+    lat, lon = None, None  # Placeholder for coordinates
+
+    for filename in os.listdir(folder_path):
+        if filename.endswith('.nc'):
+            file_path = os.path.join(folder_path, filename)
+            
+            with nc.Dataset(file_path, "r") as dataset:
+                si_thickness = dataset.variables['sea_ice_thickness'][:]
+                
+                # Filter out NaN, -999.0, and 0.0 values
+                mask = ~np.isnan(si_thickness) & (si_thickness != -999.0) & (si_thickness != 0.0)
+                si_thickness = np.where(mask, si_thickness, np.nan)
+                
+                # Store the thickness data
+                si_tickness_data.append(si_thickness)
+                
+                # Get lat/lon from the first file
+                if lat is None or lon is None:
+                    lat = dataset.variables['latitude'][:]
+                    lon = dataset.variables['longitude'][:]
+   
+    si_thickness_data = np.array(si_tickness_data)
+    monthly_mean_thickness = np.mean(si_thickness_data, axis=0)
+    return lat, lon, monthly_mean_thickness
+
+def plot_data(lon, lat, si_thickness):
+    # Check if lon and lat are already 2D
+    if lon.ndim == 1 and lat.ndim == 1:
+        lon, lat = np.meshgrid(lon, lat)
+    
+    fig = plt.figure(figsize=(10, 10))
+    ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
+    ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
+
+    # Plot the sea ice thickness
+    mesh = ax.pcolormesh(lon, lat, si_thickness[0, :, :], transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1, zorder=1)
+    
+    ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
+    ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
+    ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5, zorder=4)
+    
+    
+    cbar = plt.colorbar(mesh, orientation='vertical')
+    cbar.set_label('Sea Ice Thickness (m)')
+    plt.title('Sea Ice Thickness')
+    plt.show()
+
+
+def store_to_file(lon, lat, si_thickness, output_file):
+    with nc.Dataset(output_file, "w", format="NETCDF4") as dataset:
+        # Define dimensions
+        dataset.createDimension("time", 1)  # Single time step
+        dataset.createDimension("lat", 896)
+        dataset.createDimension("lon", 608)
         
-        # Load the data
-        with nc.Dataset(file_path, 'r') as ds:
-            sea_ice_thickness = ds.variables['sea_ice_thickness'][:]
-            
-            # Filter out NaN, -999.0, and 0.0 values
-            valid_thickness = sea_ice_thickness[(~np.isnan(sea_ice_thickness)) & 
-                                                (sea_ice_thickness != -999.0) & 
-                                                (sea_ice_thickness != 0.0)]
-            
-            # Calculate the mean thickness for the day if there are valid values
-            if valid_thickness.size > 0:
-                daily_mean_thickness = np.mean(valid_thickness)
-                daily_means.append(daily_mean_thickness)
-# Calculate the monthly mean
-monthly_mean_thickness = np.mean(daily_means)
-# Save the monthly mean to a new file
-output_file = 'monthly_mean_sea_ice_thickness.csv'
-pd.DataFrame({'Monthly Mean Thickness': [monthly_mean_thickness]}).to_csv(output_file, index=False)
-# Plotting
-# Use the latitude and longitude from one of the files
-sample_file = os.path.join(folder_path, os.listdir(folder_path)[0])
-with nc.Dataset(sample_file, 'r') as ds_sample:
-    lat = ds_sample.variables['latitude'][:]
-    lon = ds_sample.variables['longitude'][:]
-    sea_ice_thickness = ds_sample.variables['sea_ice_thickness'][:]
-# Check if lon and lat are already 2D
-if lon.ndim == 1 and lat.ndim == 1:
-    lon, lat = np.meshgrid(lon, lat)
-# Create the plot
-fig, ax = plt.subplots(subplot_kw={'projection': ccrs.NorthPolarStereo()})
-ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
-ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5)
-ax.add_feature(cfeature.LAND, color='lightgray', alpha=0.5)
-ax.add_feature(cfeature.COASTLINE, color="gray", linewidth=0.5)
-# Plot the sea ice thickness
-mesh = ax.pcolormesh(lon, lat, sea_ice_thickness[0, :, :], transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1)
-# Add a colorbar
-cbar = plt.colorbar(mesh, orientation='vertical')
-cbar.set_label('Sea Ice Thickness (m)')
-# Set the title and show the plot
-plt.title('Sea Ice Thickness')
-plt.show()
+        # Create variables
+        times = dataset.createVariable("time", "f4", ("time",))
+        lats = dataset.createVariable("latitude", "f4", ("lat", "lon"))
+        lons = dataset.createVariable("longitude", "f4", ("lat", "lon"))
+        sea_ice_thickness = dataset.createVariable("sea_ice_thickness", "f4", ("time", "lat", "lon"), fill_value=np.nan)
+        
+        # Write data
+        times[:] = [0]  # Arbitrary time value
+        lats[:, :] = lat
+        lons[:, :] = lon
+        sea_ice_thickness[0, :, :] = si_thickness
+        
+        # Metadata
+        dataset.description = "Monthly mean sea ice thickness datset"
+        dataset.source = "Processed from daily SMOS data"
+        dataset.history = "Created " + time.ctime(time.time())
+        
+
+
+if __name__ == "__main__":
+    folder_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2024\oct"
+    output_file = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\monthly_mean_thickness.nc"
+    
+    lat, lon, si_thickness = get_data(folder_path)
+    plot_data(lon, lat, si_thickness)
+    #store_to_file(lon, lat, si_thickness, output_file)
