@@ -4,6 +4,7 @@ from scipy.spatial import cKDTree
 import matplotlib.pyplot as plt
 from cartopy import crs as ccrs, feature as cfeature
 import netCDF4 as nc
+from scipy.interpolate import interp1d
 
 # ------------- Paths ------------- #
 cryo_oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2022\uit_cryosat2_L3_EASE2_nh25km_2022_10_v3.nc"
@@ -110,9 +111,8 @@ def comp_all_months():
 
     plt.show()
 
-def regions():
-    pass
-    
+
 
 if __name__ == "__main__":
-    comp_all_months()
+    #comp_all_months()
+    scatter_pair()

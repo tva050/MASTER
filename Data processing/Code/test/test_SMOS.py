@@ -19,7 +19,8 @@ def get_data(folder_path):
             
             with nc.Dataset(file_path, "r") as dataset:
                 si_thickness = dataset.variables['sea_ice_thickness'][:]
-                
+                # print the variables keys 
+                print(dataset.variables.keys())    
                 # Filter out NaN, -999.0, and 0.0 values
                 mask = ~np.isnan(si_thickness) & (si_thickness != -999.0) & (si_thickness != 0.0)
                 si_thickness = np.where(mask, si_thickness, np.nan)
