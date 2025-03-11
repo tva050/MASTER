@@ -1,0 +1,683 @@
+""" 
+This script includes an comprehensive comparison of the different products used to estimate sea ice thickness.
+The comparison is done by plotting the data on a map and comparing the results visually.
+
+The script includes the products:
+- CryoSat-2 L2 Trajectory Data Baseline D
+- CS2 ice thickness data from AWI
+- CS2 ice thickness data from CPOM
+- SMOS ice thickness data
+- CryoSat-2 L3 
+
+"""
+import os
+import numpy as np
+from scipy.spatial import cKDTree
+import matplotlib.pyplot as plt
+from cartopy import crs as ccrs, feature as cfeature
+import netCDF4 as nc
+from scipy.interpolate import griddata
+import seaborn as sns
+
+smos_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\oct_mean_thickness.nc"
+smos_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\nov_mean_thickness.nc"
+smos_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\dec_mean_thickness.nc"
+
+cpom_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM\thk_2021_10.map.nc"
+cpom_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM\thk_2021_11.map.nc"
+cpom_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM\thk_2021_12.map.nc"
+
+cryo_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2021\ubristol_cryosat2_seaicethickness_nh25km_2021_10_v1.nc"
+cryo_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2021\ubristol_cryosat2_seaicethickness_nh25km_2021_11_v1.nc"
+cryo_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2021\ubristol_cryosat2_seaicethickness_nh25km_2021_12_v1.nc"
+
+awi_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\AWI\awi-siral-l3c-sithick-cryosat2-rep-nh_25km_ease2-202110-fv2p6.nc"
+awi_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\AWI\awi-siral-l3c-sithick-cryosat2-rep-nh_25km_ease2-202111-fv2p6.nc"
+awi_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\AWI\awi-siral-l3c-sithick-cryosat2-rep-nh_25km_ease2-202112-fv2p6.nc"
+
+
+
+def get_cpom(path):
+	data = nc.Dataset(path)
+	#print(data.variables.keys())
+	
+	lat = data.variables['latitude'][:]
+	lon = data.variables['longitude'][:]
+	si_thickness = data.variables['thickness'][:]
+	grid_spacing = data.variables["grid_spacing"][:]
+	si_thickness_stdev = data.variables["thk_stdev"][:]
+	
+	#print(f"Lat shape: {lat.shape}")
+	#print(f"Lon shape: {lon.shape}")
+	#print(f"Thickness shape: {si_thickness.shape}")
+	
+	return lat, lon, si_thickness
+
+def get_cryo(path):
+	data = nc.Dataset(path)
+	#print(data.variables.keys())
+	
+	lat = data.variables['Latitude'][:]
+	lon = data.variables['Longitude'][:]
+	si_thickness = data.variables['Sea_Ice_Thickness'][:]
+	si_thickness_un = data.variables['Sea_Ice_Thickness_Uncertainty'][:]
+	
+	# Check if lat and lon are 1D and need reshaping
+	if lat.ndim == 1 and lon.ndim == 1:
+		lon, lat = np.meshgrid(lon, lat)
+		print('Reshaped lat and lon')
+	# Mask invalid data
+	mask = ~np.isnan(si_thickness)
+	filtered_si_thickness = np.where(mask, si_thickness, np.nan)
+	return lat, lon, filtered_si_thickness
+
+def get_cryo_W99(path):
+	data = nc.Dataset(path)
+	
+	lat = data.variables['Latitude'][:]
+	lon = data.variables['Longitude'][:]
+	si_thickness = data.variables['Sea_Ice_Thickness_W99'][:]
+	
+	if lat.ndim == 1 and lon.ndim == 1:
+		lon, lat = np.meshgrid(lon, lat)
+		print('Reshaped lat and lon')
+	
+	mask = ~np.isnan(si_thickness)
+	filtered_si_thickness = np.where(mask, si_thickness, np.nan)
+	return lat, lon, filtered_si_thickness
+
+def get_smos(path):
+	data = nc.Dataset(path)
+	# print(data.variables.keys())
+	
+	lat = data.variables['latitude'][:]
+	lon = data.variables['longitude'][:]
+	si_thickness = data.variables['sea_ice_thickness'][:]
+	
+	return lat, lon, si_thickness
+	
+def get_awi(path):
+	data = nc.Dataset(path)
+	#print(data.variables.keys())
+	
+	lat = data.variables['lat'][:]
+	lon = data.variables['lon'][:]
+	si_thickness = data.variables['sea_ice_thickness'][:]
+	# Mask invalid data
+	mask = ~np.isnan(si_thickness)
+	filtered_si_thickness = np.where(mask, si_thickness, np.nan)
+
+	return lat, lon, filtered_si_thickness
+
+
+lat_awi_oct, lon_awi_oct, si_thickness_awi_oct = get_awi(awi_oct_2021)
+lat_awi_nov, lon_awi_nov, si_thickness_awi_nov = get_awi(awi_nov_2021)
+lat_awi_dec, lon_awi_dec, si_thickness_awi_dec = get_awi(awi_dec_2021)
+
+lat_cpom_oct, lon_cpom_oct, si_thickness_cpom_oct = get_cpom(cpom_oct_2021)
+lat_cpom_nov, lon_cpom_nov, si_thickness_cpom_nov = get_cpom(cpom_nov_2021)
+lat_cpom_dec, lon_cpom_dec, si_thickness_cpom_dec = get_cpom(cpom_dec_2021)
+
+lat_cryo_oct, lon_cryo_oct, si_thickness_cryo_oct = get_cryo(cryo_oct_2021)
+lat_cryo_nov, lon_cryo_nov, si_thickness_cryo_nov = get_cryo(cryo_nov_2021)
+lat_cryo_dec, lon_cryo_dec, si_thickness_cryo_dec = get_cryo(cryo_dec_2021)
+
+lat_w99_oct, lon_w99_oct, si_thickness_w99_oct = get_cryo_W99(cryo_oct_2021)
+lat_w99_nov, lon_w99_nov, si_thickness_w99_nov = get_cryo_W99(cryo_nov_2021)
+lat_w99_dec, lon_w99_dec, si_thickness_w99_dec = get_cryo_W99(cryo_dec_2021)
+
+lat_smos_oct, lon_smos_oct, si_thickness_smos_oct = get_smos(smos_oct_2021)
+lat_smos_nov, lon_smos_nov, si_thickness_smos_nov = get_smos(smos_nov_2021)
+lat_smos_dec, lon_smos_dec, si_thickness_smos_dec = get_smos(smos_dec_2021)
+
+
+def interpolate_data(source_lat, source_lon, source_si, target_lat, target_lon):
+	source_points = np.array([source_lat.flatten(), source_lon.flatten()]).T
+	source_values = source_si.flatten()
+	
+	target_points = np.array([target_lat.flatten(), target_lon.flatten()]).T
+	
+	source_interp = griddata(source_points, source_values, target_points, method='linear')
+	return source_interp.reshape(target_lat.shape)
+
+
+cryo_interp_oct = interpolate_data(lat_cryo_oct, lon_cryo_oct, si_thickness_cryo_oct, lat_smos_oct, lon_smos_oct)
+cpom_interp_oct = interpolate_data(lat_cpom_oct, lon_cpom_oct, si_thickness_cpom_oct, lat_smos_oct, lon_smos_oct)
+awi_interp_oct  = interpolate_data(lat_awi_oct, lon_awi_oct, si_thickness_awi_oct, lat_smos_oct, lon_smos_oct)
+w99_interp_oct  = interpolate_data(lat_w99_oct, lon_w99_oct, si_thickness_w99_oct, lat_smos_oct, lon_smos_oct)
+
+cryo_interp_nov = interpolate_data(lat_cryo_nov, lon_cryo_nov, si_thickness_cryo_nov, lat_smos_nov, lon_smos_nov)
+cpom_interp_nov = interpolate_data(lat_cpom_nov, lon_cpom_nov, si_thickness_cpom_nov, lat_smos_nov, lon_smos_nov)
+awi_interp_nov  = interpolate_data(lat_awi_nov, lon_awi_nov, si_thickness_awi_nov, lat_smos_nov, lon_smos_nov)
+w99_interp_nov  = interpolate_data(lat_w99_nov, lon_w99_nov, si_thickness_w99_nov, lat_smos_nov, lon_smos_nov)
+
+cryo_interp_dec = interpolate_data(lat_cryo_dec, lon_cryo_dec, si_thickness_cryo_dec, lat_smos_dec, lon_smos_dec)
+cpom_interp_dec = interpolate_data(lat_cpom_dec, lon_cpom_dec, si_thickness_cpom_dec, lat_smos_dec, lon_smos_dec)
+awi_interp_dec  = interpolate_data(lat_awi_dec, lon_awi_dec, si_thickness_awi_dec, lat_smos_dec, lon_smos_dec)
+w99_interp_dec  = interpolate_data(lat_w99_dec, lon_w99_dec, si_thickness_w99_dec, lat_smos_dec, lon_smos_dec)
+
+
+def box_plot_comp(cryo_interp, smos_si):
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+	
+	cryo_flat = cryo_interp.flatten()
+	smos_flat = smos_si.flatten()
+	
+	valid_mask = ~np.isnan(cryo_flat) & ~np.isnan(smos_flat)
+	cryo_flat = cryo_flat[valid_mask]
+	smos_flat = smos_flat[valid_mask]
+	
+	binned_smos_data = []
+	for i in range(len(bins) - 1):
+		mask = (smos_flat >= bins[i]) & (smos_flat < bins[i + 1])
+		binned_smos_data.append(cryo_flat[mask])
+ 
+	plt.figure(figsize=(10, 6))
+	plt.boxplot(binned_smos_data, labels=bin_labels)
+	plt.xlabel('SMOS Sea Ice Thickness Bins (m)')
+	plt.ylabel('CryoSat-2 Sea Ice Thickness (m)')
+	plt.title('Comparison of Sea Ice Thickness Estimates')
+	plt.grid(True)
+	plt.show()
+
+def single_box_plot_scatter(cryo_interp, smos_si):
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+	
+	cryo_flat = cryo_interp.flatten()
+	smos_flat = smos_si.flatten()
+	
+	valid_mask = ~np.isnan(cryo_flat) & ~np.isnan(smos_flat)
+	cryo_flat = cryo_flat[valid_mask]
+	smos_flat = smos_flat[valid_mask]
+	
+	binned_smos_data = []
+	for i in range(len(bins) - 1):
+		mask = (smos_flat >= bins[i]) & (smos_flat < bins[i + 1])
+		binned_smos_data.append(cryo_flat[mask])
+	
+	vals, names, xs = [], [], []
+	for i, d in enumerate(binned_smos_data):  # Use enumerate to get index and data
+		vals.append(d)
+		names.append(i)
+		xs.append(np.random.normal(i + 1, 0.06, len(d)))
+ 
+	plt.figure()
+	plt.boxplot(vals, labels=bin_labels, medianprops=dict(color='black'))
+	palette = ['lightsalmon', 'lightsalmon', 'lightsalmon', 'lightsalmon', 'lightsalmon']
+	for x, val, c in zip(xs, vals, palette):
+		plt.scatter(x, val, alpha=0.4, color=c, s=10)
+ 
+	plt.xlabel('SMOS Sea Ice Thickness Bins (m)')
+	plt.ylabel('CryoSat-2 Sea Ice Thickness (m)')
+	plt.title('Comparison of Sea Ice Thickness Estimates')
+	plt.grid(False)
+	plt.show()
+ 
+ 
+def multiple_box_plot_scatter(cryo_interp, cpom_interp, awi_interp, smos_si):
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+	
+	cryo_flat = cryo_interp.flatten()
+	cpom_flat = cpom_interp.flatten()
+	awi_flat = awi_interp.flatten()
+	smos_flat = smos_si.flatten()
+	
+	# Mask out NaN values
+	valid_mask = ~np.isnan(cryo_flat) & ~np.isnan(cpom_flat) & ~np.isnan(awi_flat) & ~np.isnan(smos_flat)
+	cryo_flat = cryo_flat[valid_mask]
+	cpom_flat = cpom_flat[valid_mask]
+	awi_flat = awi_flat[valid_mask]
+	smos_flat = smos_flat[valid_mask]
+	
+	# Bin the data
+	binned_smos_cryo_data = []
+	binned_smos_cpom_data = []
+	binned_smos_awi_data = []
+	
+	for i in range(len(bins) - 1):
+		mask = (smos_flat >= bins[i]) & (smos_flat < bins[i + 1])
+		binned_smos_cryo_data.append(cryo_flat[mask])
+		binned_smos_cpom_data.append(cpom_flat[mask])
+		binned_smos_awi_data.append(awi_flat[mask])
+  
+	# Create subplots (1 row, 3 columns)
+	fig, axes = plt.subplots(1, 3, sharey=True)
+
+	# Plot boxplots in the respective axes
+	axes[0].boxplot(binned_smos_cryo_data, labels=bin_labels, medianprops=dict(color='black'))
+	axes[0].set_title("SMOS vs CryoSat-2")
+	axes[0].set_xlabel("SMOS SIT [m]")
+	axes[0].set_ylabel("CryoSat-2 SIT [m]")
+
+	axes[1].boxplot(binned_smos_cpom_data, labels=bin_labels, medianprops=dict(color='black'))
+	axes[1].set_title("SMOS vs CPOM")
+	axes[1].set_xlabel("SMOS SIT [m]")
+	axes[1].set_ylabel("CPOM SIT [m]")
+
+	axes[2].boxplot(binned_smos_awi_data, labels=bin_labels, medianprops=dict(color='black'))
+	axes[2].set_title("SMOS vs AWI")
+	axes[2].set_xlabel("SMOS SIT [m]")
+	axes[2].set_ylabel("AWI SIT [m]")
+
+	for j in range(len(bins) - 1):
+	 	# Jitter the x-position slightly for better visualization
+		x_positions = np.random.normal(j + 1, 0.05, size=len(binned_smos_cryo_data[j]))
+		axes[0].scatter(x_positions, binned_smos_cryo_data[j], alpha=0.4, color='salmon', s=10)
+		
+		x_positions = np.random.normal(j + 1, 0.05, size=len(binned_smos_cpom_data[j]))
+		axes[1].scatter(x_positions, binned_smos_cpom_data[j], alpha=0.4, color='teal', s=10)
+		
+		x_positions = np.random.normal(j + 1, 0.05, size=len(binned_smos_awi_data[j]))
+		axes[2].scatter(x_positions, binned_smos_awi_data[j], alpha=0.4, color='blueviolet', s=10)
+ 
+	for ax in axes:
+		ax.yaxis.set_tick_params(labelleft=True)
+ 
+	# Adjust layout for better spacing
+	plt.tight_layout()
+	plt.show()
+ 
+def barplot(cryo_interp, W99_interp , cpom_interp, awi_interp, smos_si):
+	# Define bins (continuous from 0 to 1)
+	bins = np.linspace(0, 1, 11)  # Creates 5 bins from 0 to 1
+	bin_centers = (bins[:-1] + bins[1:]) / 2  # Midpoints for plotting
+
+	# Flatten arrays
+	cryo_flat = cryo_interp.flatten()
+	w99_flat = W99_interp.flatten()
+	cpom_flat = cpom_interp.flatten()
+	awi_flat = awi_interp.flatten()
+	smos_flat = smos_si.flatten()
+
+	# Remove NaN values
+	valid_mask = ~np.isnan(cryo_flat) & ~np.isnan(cpom_flat) & ~np.isnan(awi_flat) & ~np.isnan(smos_flat) & ~np.isnan(w99_flat)
+	cryo_flat, w99_flat, cpom_flat, awi_flat, smos_flat = cryo_flat[valid_mask], cpom_flat[valid_mask], awi_flat[valid_mask], smos_flat[valid_mask], w99_flat[valid_mask]
+
+	# Initialize lists for means in each bin
+	mean_cryo = []
+	mean_w99 = []
+	mean_cpom = []
+	mean_awi = []
+
+	# Compute mean values for each bin
+	for i in range(len(bins) - 1):
+		mask = (smos_flat >= bins[i]) & (smos_flat < bins[i + 1])
+		
+		if np.any(mask):  # If there are values in the bin
+			mean_cryo.append(np.mean(cryo_flat[mask]))
+			mean_w99.append(np.mean(w99_flat[mask]))
+			mean_cpom.append(np.mean(cpom_flat[mask]))
+			mean_awi.append(np.mean(awi_flat[mask]))
+		else:
+			mean_cryo.append(np.nan)
+			mean_w99.append(np.nan)
+			mean_cpom.append(np.nan)
+			mean_awi.append(np.nan)
+
+	# Plot bar chart
+	bar_width = 0.02  # Small width for better visibility
+	plt.figure(figsize=(8, 5))
+
+	plt.bar(bin_centers - bar_width, mean_cryo, width=bar_width, label='CryoSat-2', color='salmon')
+	plt.bar(bin_centers, mean_w99, width=bar_width, label='W99', color='teal')
+	plt.bar(bin_centers + bar_width, mean_cpom, width=bar_width, label='CPOM', color='blueviolet')
+	plt.bar(bin_centers + 2*bar_width, mean_awi, width=bar_width, label='AWI', color='darkorange')
+
+	# Labels and formatting
+	plt.xlabel("SMOS SIT [m]")
+	plt.ylabel("Mean SIT [m]")
+	plt.title("Comparison of SMOS vs CryoSat-2, CPOM, and AWI")
+	plt.xlim(0, 1)  # Ensure x-axis is continuous from 0 to 1
+	plt.legend()
+	plt.grid(axis='y', linestyle='--', alpha=0.5)
+
+	# Show plot
+	plt.show()
+ 
+def barplot_all_months():
+	bins = np.linspace(0, 1, 11)  # Creates 5 bins from 0 to 1
+	bin_centers = (bins[:-1] + bins[1:]) / 2  # Midpoints for plotting
+	
+	# Flatten arrays
+	cryo_flat_oct = cryo_interp_oct.flatten()
+	w99_flat_oct = w99_interp_oct.flatten()
+	cpom_flat_oct = cpom_interp_oct.flatten()
+	awi_flat_oct = awi_interp_oct.flatten()
+	sit_smos_oct = si_thickness_smos_oct.flatten()
+ 
+	cryo_flat_nov = cryo_interp_nov.flatten()
+	w99_flat_nov = w99_interp_nov.flatten()
+	cpom_flat_nov = cpom_interp_nov.flatten()
+	awi_flat_nov = awi_interp_nov.flatten()
+	sit_smos_nov = si_thickness_smos_nov.flatten()
+ 
+	cryo_flat_dec = cryo_interp_dec.flatten()
+	w99_flat_dec = w99_interp_dec.flatten()
+	cpom_flat_dec = cpom_interp_dec.flatten()
+	awi_flat_dec = awi_interp_dec.flatten()
+	sit_smos_dec = si_thickness_smos_dec.flatten()
+
+
+	valid_mask = ~np.isnan(cryo_flat_oct) & ~np.isnan(cpom_flat_oct) & ~np.isnan(awi_flat_oct) & ~np.isnan(sit_smos_oct) & ~np.isnan(w99_flat_oct)
+	cryo_flat_oct, w99_flat_oct, cpom_flat_oct, awi_flat_oct, sit_smos_oct = cryo_flat_oct[valid_mask], w99_flat_oct[valid_mask], cpom_flat_oct[valid_mask], awi_flat_oct[valid_mask], sit_smos_oct[valid_mask]
+ 
+	valid_mask = ~np.isnan(cryo_flat_nov) & ~np.isnan(cpom_flat_nov) & ~np.isnan(awi_flat_nov) & ~np.isnan(sit_smos_nov) & ~np.isnan(w99_flat_nov)
+	cryo_flat_nov, w99_flat_nov, cpom_flat_nov, awi_flat_nov, sit_smos_nov = cryo_flat_nov[valid_mask], w99_flat_nov[valid_mask], cpom_flat_nov[valid_mask], awi_flat_nov[valid_mask], sit_smos_nov[valid_mask]
+ 
+	valid_mask = ~np.isnan(cryo_flat_dec) & ~np.isnan(cpom_flat_dec) & ~np.isnan(awi_flat_dec) & ~np.isnan(sit_smos_dec) & ~np.isnan(w99_flat_dec)
+	cryo_flat_dec, w99_flat_dec, cpom_flat_dec, awi_flat_dec, sit_smos_dec = cryo_flat_dec[valid_mask], w99_flat_dec[valid_mask], cpom_flat_dec[valid_mask], awi_flat_dec[valid_mask], sit_smos_dec[valid_mask]
+
+	# Initialize lists for means in each bin
+	mean_cryo_oct = []
+	mean_w99_oct = []
+	mean_cpom_oct = []
+	mean_awi_oct = []
+
+	mean_cryo_nov = []
+	mean_w99_nov = []
+	mean_cpom_nov = []
+	mean_awi_nov = []
+ 
+	mean_cryo_dec = []
+	mean_w99_dec = []
+	mean_cpom_dec = []
+	mean_awi_dec = []
+
+	# Compute mean values for each bin
+	for i in range(len(bins) - 1):
+		mask_oct = (sit_smos_oct >= bins[i]) & (sit_smos_oct < bins[i + 1])
+		mask_nov = (sit_smos_nov >= bins[i]) & (sit_smos_nov < bins[i + 1])
+		mask_dec = (sit_smos_dec >= bins[i]) & (sit_smos_dec < bins[i + 1])
+  
+		mean_cryo_oct.append(np.mean(cryo_flat_oct[mask_oct]))
+		mean_w99_oct.append(np.mean(w99_flat_oct[mask_oct]))
+		mean_cpom_oct.append(np.mean(cpom_flat_oct[mask_oct]))
+		mean_awi_oct.append(np.mean(awi_flat_oct[mask_oct]))
+  
+		mean_cryo_nov.append(np.mean(cryo_flat_nov[mask_nov]))
+		mean_w99_nov.append(np.mean(w99_flat_nov[mask_nov]))
+		mean_cpom_nov.append(np.mean(cpom_flat_nov[mask_nov]))
+		mean_awi_nov.append(np.mean(awi_flat_nov[mask_nov]))
+  
+		mean_cryo_dec.append(np.mean(cryo_flat_dec[mask_dec]))
+		mean_w99_dec.append(np.mean(w99_flat_dec[mask_dec]))
+		mean_cpom_dec.append(np.mean(cpom_flat_dec[mask_dec]))
+		mean_awi_dec.append(np.mean(awi_flat_dec[mask_dec]))
+  
+  
+	# plot bar chart for the three months, under each other
+	# Plot bar charts for the three months under each other
+	fig, axs = plt.subplots(1, 3, figsize=(15, 5))  # 3 rows, 1 column (for three months)
+
+	# Plot for October
+	axs[0].bar(bin_centers - 0.02, mean_cryo_oct, width=0.02, label='CryoSat-2', color='salmon')
+	axs[0].bar(bin_centers, mean_w99_oct, width=0.02, label='W99', color='teal')
+	axs[0].bar(bin_centers + 0.02, mean_cpom_oct, width=0.02, label='CPOM', color='blueviolet')
+	axs[0].bar(bin_centers + 0.04, mean_awi_oct, width=0.02, label='AWI', color='darkorange')
+	axs[0].set_title("October Comparison")
+	axs[0].set_xlabel("SMOS SIT [m]")
+	axs[0].legend()
+	axs[0].grid(axis='y', linestyle='--', alpha=0.5)
+	
+	# Plot for November
+	axs[1].bar(bin_centers - 0.02, mean_cryo_nov, width=0.02, label='CryoSat-2', color='salmon')
+	axs[1].bar(bin_centers, mean_w99_nov, width=0.02, label='W99', color='teal')
+	axs[1].bar(bin_centers + 0.02, mean_cpom_nov, width=0.02, label='CPOM', color='blueviolet')
+	axs[1].bar(bin_centers + 0.04, mean_awi_nov, width=0.02, label='AWI', color='darkorange')
+	axs[1].set_title("November Comparison")
+	axs[1].set_xlabel("SMOS SIT [m]")
+	axs[1].legend()
+	axs[1].grid(axis='y', linestyle='--', alpha=0.5)
+	
+	# Plot for December
+	axs[2].bar(bin_centers - 0.02, mean_cryo_dec, width=0.02, label='CryoSat-2', color='salmon')
+	axs[2].bar(bin_centers, mean_w99_dec, width=0.02, label='W99', color='teal')
+	axs[2].bar(bin_centers + 0.02, mean_cpom_dec, width=0.02, label='CPOM', color='blueviolet')
+	axs[2].bar(bin_centers + 0.04, mean_awi_dec, width=0.02, label='AWI', color='darkorange')
+	axs[2].set_title("December Comparison")
+	axs[2].set_xlabel("SMOS SIT [m]")
+	axs[2].legend()
+	axs[2].grid(axis='y', linestyle='--', alpha=0.5)
+
+	# Adjust the layout to avoid overlap
+	plt.tight_layout()
+
+	# Show the plot
+	plt.show()
+
+ 
+ 
+def average_difference_target_source(cryo_interp, cpom_interp, awi_interp, smos_si):
+	# Define bins and labels
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+	
+	# Flatten arrays
+	cryo_flat = cryo_interp.flatten()
+	cpom_flat = cpom_interp.flatten()
+	awi_flat = awi_interp.flatten()
+	smos_flat = smos_si.flatten()
+	
+	# Remove NaN values
+	valid_mask = ~np.isnan(cryo_flat) & ~np.isnan(cpom_flat) & ~np.isnan(awi_flat) & ~np.isnan(smos_flat)
+	cryo_flat = cryo_flat[valid_mask]
+	cpom_flat = cpom_flat[valid_mask]
+	awi_flat = awi_flat[valid_mask]
+	smos_flat = smos_flat[valid_mask]
+
+	# Initialize lists to store results
+	mean_differences_cryo = []
+	mean_differences_cpom = []
+	mean_differences_awi = []
+	
+	corr_cryo = []
+	corr_cpom = []
+	corr_awi = []
+
+	rmse_cryo = []
+	rmse_cpom = []
+	rmse_awi = []
+ 
+	# Compute mean difference for each bin
+	for i in range(len(bins) - 1):
+		mask = (smos_flat >= bins[i]) & (smos_flat < bins[i + 1])
+		
+		if np.any(mask):  # Check if the bin contains any values
+			smos_bin = smos_flat[mask]
+			cryo_bin = cryo_flat[mask]
+			cpom_bin = cpom_flat[mask]
+			awi_bin = awi_flat[mask]
+
+			
+			smos_mean = np.mean(smos_flat[mask])  # Mean SMOS value in the bin
+			
+			# Compute mean differences
+			mean_differences_cryo.append(np.mean(cryo_flat[mask]) - smos_mean)
+			mean_differences_cpom.append(np.mean(cpom_flat[mask]) - smos_mean)
+			mean_differences_awi.append(np.mean(awi_flat[mask]) - smos_mean)
+			
+			corr_cryo.append(np.corrcoef(smos_bin, cryo_bin)[0, 1])
+			corr_cpom.append(np.corrcoef(smos_bin, cpom_bin)[0, 1])
+			corr_awi.append(np.corrcoef(smos_bin, awi_bin)[0, 1])
+   
+			rmse_cryo.append(np.sqrt(np.mean((cryo_flat[mask] - smos_bin) ** 2)))
+			rmse_cpom.append(np.sqrt(np.mean((cpom_flat[mask] - smos_bin) ** 2)))
+			rmse_awi.append(np.sqrt(np.mean((awi_flat[mask] - smos_bin) ** 2)))   
+
+		else:
+			# Append NaN if no values in bin to keep dimensions consistent
+			mean_differences_cryo.append(np.nan)
+			mean_differences_cpom.append(np.nan)
+			mean_differences_awi.append(np.nan)
+	
+	# print results
+	print("-----------------SMOS and CryoSat-2-----------------")
+	print(f"Mean difference: {np.round(mean_differences_cryo, 3)}")
+	print(f"Correlation coefficient: {np.round(corr_cryo, 3)}")
+	print(f"RMSE: {np.round(rmse_cryo, 3)}")
+	print("Total mean difference: ", np.round(np.nanmean(mean_differences_cryo), 3))
+	print("Total RMSE:", np.round(np.nanmean(rmse_cryo), 3))
+	print("\n-----------------SMOS and CPOM-----------------")
+	print(f"Mean difference: {np.round(mean_differences_cpom, 3)}")
+	print(f"Correlation coefficient: {np.round(corr_cpom, 3)}")
+	print(f"RMSE: {np.round(rmse_cpom, 3)}")
+	print("Total mean difference: ", np.round(np.nanmean(mean_differences_cpom), 3))
+	print("Total RMSE:", np.round(np.nanmean(rmse_cpom), 3))
+	print("\n-----------------SMOS and AWI-----------------")
+	print(f"Mean difference: {np.round(mean_differences_awi, 3)}")
+	print(f"Correlation coefficient: {np.round(corr_awi, 3)}")
+	print(f"RMSE: {np.round(rmse_awi, 3)}")
+	print("Total mean difference: ", np.round(np.nanmean(mean_differences_awi), 3))
+	print("Total RMSE:", np.round(np.nanmean(rmse_awi), 3))
+
+def plot_normalized_cs2_vs_smos(cs2_si, smos_si):
+	# Flatten the arrays and remove NaN values
+	cs2_flat = cs2_si.flatten()
+	smos_flat = smos_si.flatten()
+	
+	valid_mask = ~np.isnan(cs2_flat) & ~np.isnan(smos_flat)
+	cs2_flat = cs2_flat[valid_mask]
+	smos_flat = smos_flat[valid_mask]
+	
+	# Define bins for SMOS SIT
+	bins = np.linspace(0, 1, 40)  # 50 bins from 0 to 1
+	bin_centers = (bins[:-1] + bins[1:]) / 2
+	
+	# Compute mean CS2 SIT for each bin
+	mean_cs2 = np.zeros(len(bin_centers))
+	for i in range(len(bins) - 1):
+		mask = (smos_flat >= bins[i]) & (smos_flat < bins[i + 1])
+		mean_cs2[i] = np.mean(cs2_flat[mask])
+	
+	# Create the plot
+	plt.figure(figsize=(8, 6))
+	
+	# Plot the line
+	plt.plot(bin_centers, mean_cs2, 'k-', label='Mean CS2 vs SMOS')
+	plt.plot([0, 1], [0, 1], 'k-', alpha=0.5, label="1:1 Line")
+	# Fill the areas
+	plt.fill_between(bin_centers, mean_cs2, bin_centers, where=(mean_cs2 > bin_centers), color='grey', alpha=0.5, label='CS2 overestimates SMOS')
+	plt.fill_between(bin_centers, mean_cs2, bin_centers, where=(mean_cs2 < bin_centers), color='pink', alpha=0.5, label='CS2 underestimates SMOS')
+	
+	# Set labels and title
+	plt.xlabel('SMOS SIT [m]')
+	plt.ylabel('Mean CS2 SIT [m]')
+	plt.title('Normalized Comparison of CS2 and SMOS Sea Ice Thickness')
+	plt.legend()
+	plt.grid(True)
+	plt.xlim(0, 1)
+	plt.ylim(0, 1)
+	
+	# Show plot
+	plt.show()
+
+def heatmap_sea_ice_difference(cryo_interp, w99_interp, cpom_interp, awi_interp, smos_si):
+    bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+    bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+    satellite_products = ["CryoSat-2", "W99", "CPOM", "AWI"]
+    
+    cryo_flat = cryo_interp.flatten()
+    w99_flat = w99_interp.flatten()
+    cpom_flat = cpom_interp.flatten()
+    awi_flat = awi_interp.flatten()
+    smos_flat = smos_si.flatten()
+
+    # Mask out NaN values
+    valid_mask = ~np.isnan(cryo_flat) & ~np.isnan(cpom_flat) & ~np.isnan(awi_flat) & ~np.isnan(smos_flat)
+    cryo_flat = cryo_flat[valid_mask]
+    w99_flat = w99_flat[valid_mask]
+    cpom_flat = cpom_flat[valid_mask]
+    awi_flat = awi_flat[valid_mask]
+    smos_flat = smos_flat[valid_mask]
+
+    # Initialize array to store mean differences
+    mean_differences = np.zeros((len(satellite_products), len(bins) - 1))
+
+    # Compute mean differences for each bin
+    for i in range(len(bins) - 1):
+        mask = (smos_flat >= bins[i]) & (smos_flat < bins[i + 1])
+        
+        if np.any(mask):  # Ensure there is data in the bin
+            mean_differences[0, i] = np.nanmean(cryo_flat[mask] - smos_flat[mask])  # CryoSat-2 - SMOS
+            mean_differences[1, i] = np.nanmean(w99_flat[mask] - smos_flat[mask])   # W99 - SMOS
+            mean_differences[2, i] = np.nanmean(cpom_flat[mask] - smos_flat[mask])  # CPOM - SMOS
+            mean_differences[3, i] = np.nanmean(awi_flat[mask] - smos_flat[mask])   # AWI - SMOS
+        else:
+            mean_differences[:, i] = np.nan  # Assign NaN if no valid data
+
+    # Create the heatmap
+    plt.figure(figsize=(8, 6))
+    ax = sns.heatmap(mean_differences, annot=True, cmap="plasma", fmt=".2f",
+                     xticklabels=bin_labels, yticklabels=satellite_products, center=0)
+
+    plt.xlabel("SMOS SIT Bins [m]")
+    plt.ylabel("CryoSat-2 Products")
+    plt.title("Mean Difference in SIT (Cryosat2 - SMOS), oct")
+    plt.show()
+
+def map_difference(cryo_interp, smos_interp, lat_smos, lon_smos, month_label=str):
+    """ 
+    The function plots the main difference at every grid point between the CryoSat-2 and SMOS sea ice thickness data,
+    from 0 - 1 m, with the colorbar representing the difference in meters. In polar stereographic projection.
+    """
+    # Check the shape of the inputs
+    print(f"Shape of CryoSat-2 data: {cryo_interp.shape}")
+    print(f"Shape of SMOS data: {smos_interp.shape}")
+    print(f"Shape of lat_smos: {lat_smos.shape}")
+    print(f"Shape of lon_smos: {lon_smos.shape}")
+
+    # If the difference is 3D, choose the appropriate time step (e.g., for November)
+    if len(cryo_interp.shape) == 3:  # Check if the data is 3D (time, lat, lon)
+        # Choose a specific time step (e.g., taking the first time step for CryoSat and SMOS)
+        cryo_interp = cryo_interp[0, :, :]  # First time step for CryoSat-2
+        smos_interp = smos_interp[0, :, :]  # First time step for SMOS data
+
+    # Compute the difference between CryoSat-2 and SMOS SIT data
+    difference = cryo_interp - smos_interp
+    
+    difference[smos_interp > 1] = np.nan  # Mask out SMOS SIT values greater than 1 m
+    
+    # Remove the extra dimension (squeeze to make it 2D)
+    difference = np.squeeze(difference)
+    
+    # Check the shape of the difference array to make sure it's 2D
+    print(f"Shape of the difference after squeezing: {difference.shape}")
+    
+    # Create the figure and axis for the map with Polar Stereographic projection
+    fig, ax = plt.subplots(figsize=(10, 10), subplot_kw={'projection': ccrs.NorthPolarStereo()})
+    
+    # Set up the map features: coastlines, gridlines, etc.
+    ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo()) # Set the region to the Arctic
+    ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
+    ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
+    ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5, zorder=4)
+    
+    # Plot the difference data on the map
+    # Ensure lat_smos and lon_smos are 2D, and difference is 2D
+    im = ax.pcolormesh(lon_smos, lat_smos, difference, transform=ccrs.PlateCarree(), cmap='coolwarm', shading='auto')
+
+    # Add a colorbar to represent the difference in meters
+    cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.01, fraction=0.02)
+    cbar.set_label("Difference in SIT (m)", fontsize=12)
+
+    # Set the title
+    ax.set_title(f'Difference between CryoSat-2 and SMOS SIT, {month_label}', fontsize=14)
+
+    # Show the plot
+    plt.show()
+    
+ 
+if __name__ == '__main__':
+	#box_plot_comp(cryo_interp, si_thickness_smos_oct)
+	#single_box_plot_scatter(cryo_interp, si_thickness_smos_oct)
+	#multiple_box_plot_scatter(cryo_interp, cpom_interp, awi_interp, si_thickness_smos_dec)
+	#barplot(cryo_interp, w99_interp, cpom_interp, awi_interp, si_thickness_smos_dec)
+	#barplot_all_months()
+	#average_difference_target_source(cryo_interp, cpom_interp, awi_interp, si_thickness_smos_nov)
+	#plot_normalized_cs2_vs_smos(cryo_interp, si_thickness_smos_nov)
+	heatmap_sea_ice_difference(cryo_interp_oct, w99_interp_oct, cpom_interp_oct, awi_interp_oct, si_thickness_smos_oct)
+	#map_difference(cryo_interp_dec, si_thickness_smos_dec, lat_smos_dec, lon_smos_dec, "December")
+ 

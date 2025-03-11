@@ -4,40 +4,83 @@ import matplotlib.pyplot as plt
 from cartopy import crs as ccrs, feature as cfeature
 import netCDF4 as nc
 from scipy.interpolate import griddata
-cpom_oct = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM\thk_2021_10.map.nc"
-def get_cpom(path):
+
+cryo_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2021\ubristol_cryosat2_seaicethickness_nh25km_2021_10_v1.nc"
+cryo_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2021\ubristol_cryosat2_seaicethickness_nh25km_2021_11_v1.nc"
+cryo_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2021\ubristol_cryosat2_seaicethickness_nh25km_2021_12_v1.nc"
+
+smos_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\oct_mean_thickness.nc"
+smos_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\nov_mean_thickness.nc"
+smos_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\dec_mean_thickness.nc"
+
+
+def get_cryo(path):
     data = nc.Dataset(path)
+    #print(data.variables.keys())
     
-    print(data.variables.keys())
+    lat = data.variables['Latitude'][:]
+    lon = data.variables['Longitude'][:]
+    si_thickness = data.variables['Sea_Ice_Thickness'][:]
+    si_thickness_un = data.variables['Sea_Ice_Thickness_Uncertainty'][:]
+    
+    # Check if lat and lon are 1D and need reshaping
+    if lat.ndim == 1 and lon.ndim == 1:
+        lon, lat = np.meshgrid(lon, lat)
+        print('Reshaped lat and lon')
+    # Mask invalid data
+    mask = ~np.isnan(si_thickness)
+    filtered_si_thickness = np.where(mask, si_thickness, np.nan)
+    return lat, lon, filtered_si_thickness
+
+
+
+def get_smos(path):
+    data = nc.Dataset(path)
+    # print(data.variables.keys())
     
     lat = data.variables['latitude'][:]
     lon = data.variables['longitude'][:]
-    si_thickness = data.variables['thickness'][:]
-    grid_spacing = data.variables["grid_spacing"][:]
-    
-    print(f"Lat shape: {lat.shape}")
-    print(f"Lon shape: {lon.shape}")
-    print(f"Thickness shape: {si_thickness.shape}")
-    print(f"Grid spacing: {grid_spacing}")
+    si_thickness = data.variables['sea_ice_thickness'][:]
     
     return lat, lon, si_thickness
-def plot(lat, lon, si_thickness):
-    # Convert lat/lon to the projection's coordinate system
-    proj = ccrs.NorthPolarStereo()
-    x, y = proj.transform_points(ccrs.PlateCarree(), lon, lat)[:, :2].T
-    fig = plt.figure(figsize=(10, 10))
-    ax = fig.add_subplot(1, 1, 1, projection=proj)
-    ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=proj)
-    # Plot the sea ice thickness using scatter
-    scatter = ax.scatter(lon, lat, c=si_thickness, s=1, transform=ccrs.PlateCarree(), cmap='jet', vmin=0, vmax=3.3, zorder=1)
+
+
+def interpolate_data(source_lat, source_lon, source_si, target_lat, target_lon):
+    source_points = np.array([source_lat.flatten(), source_lon.flatten()]).T
+    source_values = source_si.flatten()
     
-    ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
-    ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
-    ax.add_feature(cfeature.COASTLINE, color="gray", linewidth=0.5, zorder=4)
+    target_points = np.array([target_lat.flatten(), target_lon.flatten()]).T
     
-    cbar = plt.colorbar(scatter, orientation='vertical')
-    cbar.set_label('Sea Ice Thickness (m)')
-    plt.title('Sea Ice Thickness')
+    source_interp = griddata(source_points, source_values, target_points, method='linear')
+    return source_interp.reshape(target_lat.shape)
+
+def box_plot_comp(cryo_interp, smos_si):
+    bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+    bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+    
+    cryo_flat = cryo_interp.flatten()
+    smos_flat = smos_si.flatten()
+    
+    valid_mask = ~np.isnan(cryo_flat) & ~np.isnan(smos_flat)
+    cryo_flat = cryo_flat[valid_mask]
+    smos_flat = smos_flat[valid_mask]
+    
+    binned_smos_data = []
+    for i in range(len(bins) - 1):
+        mask = (smos_flat >= bins[i]) & (smos_flat < bins[i + 1])
+        binned_smos_data.append(cryo_flat[mask])
+    
+    plt.figure(figsize=(10, 6))
+    plt.boxplot(binned_smos_data, labels=bin_labels)
+    plt.xlabel('SMOS Sea Ice Thickness Bins (m)')
+    plt.ylabel('CryoSat-2 Sea Ice Thickness (m)')
+    plt.title('Comparison of Sea Ice Thickness Estimates')
+    plt.grid(True)
     plt.show()
-lat, lon, si_thickness = get_cpom(cpom_oct)
-plot(lat, lon, si_thickness)
+    
+
+cryo_lat, cryo_lon, cryo_oct_si = get_cryo(cryo_oct_2021)
+smos_lat, smos_lon, smos_oct_si = get_smos(smos_oct_2021)
+
+cryo_interp = interpolate_data(cryo_lat, cryo_lon, cryo_oct_si, smos_lat, smos_lon)
+box_plot_comp(cryo_interp, smos_oct_si)

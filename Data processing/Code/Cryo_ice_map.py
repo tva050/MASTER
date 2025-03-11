@@ -6,7 +6,7 @@ from cartopy import crs as ccrs, feature as cfeature
 import netCDF4 as nc
 from scipy.interpolate import griddata
 
-oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_10_v3.nc"
+oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2021\ubristol_cryosat2_seaicethickness_nh25km_2021_10_v1.nc"
 nov_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_11_v3.nc"
 dec_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_12_v3.nc"
 
@@ -14,9 +14,9 @@ dec_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processi
 def get_data(path):
     data = nc.Dataset(path)
     
-    lat = data.variables['latitude'][:]
-    lon = data.variables['longitude'][:]
-    si_thickness = data.variables['sea_ice_thickness'][:]
+    lat = data.variables['Latitude'][:]
+    lon = data.variables['Longitude'][:]
+    si_thickness = data.variables['Sea_Ice_Thickness'][:]
     # Check if lat and lon are 1D and need reshaping
     if lat.ndim == 1 and lon.ndim == 1:
         lon, lat = np.meshgrid(lon, lat)
@@ -94,13 +94,56 @@ def compare_months_LARM(oct_path, nov_path, dec_path):
     fig.colorbar(sc3, ax=ax, orientation='horizontal', label='Sea Ice Thickness (m)', pad=0.05, aspect=50)
     plt.show()
     
+    
+def bar():
+    lat, lon, si_thickness = get_data(oct_path)
+    cryo_thickness = si_thickness
+    # making an bar plot of the mean and std of the sea ice thickness
+    
+    mean = np.nanmean(cryo_thickness)
+    std = np.nanstd(cryo_thickness)
+    
+    print(mean)
+    
+    plt.bar('CryoSat-2', mean, yerr=std, capsize=5)
+    plt.ylabel('Sea Ice Thickness (m)')
+    plt.title('Mean Sea Ice Thickness Comparison')
+    plt.show()
 
-
+def box_plot():
+    lat, lon, si_thickness = get_data(oct_path)
+    cryo_si = si_thickness
+    
+    if cryo_si is None or cryo_si.size == 0:
+        print("Error: CryoSat-2 data is empty!")
+        return
+    
+    # Flatten the CryoSea Ice Thickness data and remove NaN values
+    cryo_flat = cryo_si.flatten()
+    cryo_flat = cryo_flat[~np.isnan(cryo_flat)]  # Remove NaN values
+    
+    # Check data (debugging)
+    print("Data for CryoSat-2 (first 5 values):", cryo_flat[:5])
+    
+    # Create the box plot
+    plt.figure(figsize=(6, 4))
+    plt.boxplot(cryo_flat, patch_artist=True, boxprops=dict(facecolor="skyblue", color="blue"),
+                medianprops=dict(color="red"))
+    
+    # Set plot labels
+    plt.xlabel("Sea Ice Thickness (m)")
+    plt.title("CryoSat-2 Sea Ice Thickness Distribution")
+    plt.grid(True, linestyle="--", alpha=0.7)
+    
+    # Show the plot
+    plt.show()
 
 if __name__ == "__main__":
     lat, lon, si_thickness = get_data(oct_path)
     #write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness)
-    single_figure(lat, lon, si_thickness)
+    #single_figure(lat, lon, si_thickness)
     #single_figure(filtered_lat, filtered_lon, filtered_si_thickness)
     #zoomed_figure(filtered_lat, filtered_lon, filtered_si_thickness, filtered_si_thickness_uncertainty)
     #compare_months_LARM(oct_path, nov_path, dec_path)
+    #bar()
+    box_plot()

@@ -44,6 +44,9 @@ def SMOS_read_data(path):
     lon = data.variables['longitude'][:]
     si_thickness = data.variables['sea_ice_thickness'][:]
     
+    
+    mask = ~np.isnan(si_thickness) & (si_thickness != -999.0) & (si_thickness != 0.0) 
+    si_thickness = np.where(mask, si_thickness, np.nan)    
     return lat, lon, si_thickness
 
 
@@ -112,7 +115,26 @@ def comp_all_months():
     plt.show()
 
 
+def bar_smos():
+    smos_oct_lat, smos_oct_lon, smos_oct_si_thickness = SMOS_read_data(smos_oct_path)
+    smos_nov_lat, smos_nov_lon, smos_nov_si_thickness = SMOS_read_data(smos_nov_path)
+    smos_dec_lat, smos_dec_lon, smos_dec_si_thickness = SMOS_read_data(smos_dec_path)
+    
+    # filter out all values smaller than 0
+    mask = smos_oct_si_thickness > 0
+    smos_oct_si_thickness = np.where(mask, smos_oct_si_thickness, np.nan)
+    
+    mean = np.nanmean(smos_oct_si_thickness)
+    print(mean)
+    std = np.nanstd(smos_oct_si_thickness)
+    
+    plt.bar('October', mean, yerr=std, capsize=5)
+    plt.ylabel('Sea Ice Thickness (m)')
+    plt.title('Comparison of Sea Ice Thickness')
+    plt.show()
+    
+
 
 if __name__ == "__main__":
     #comp_all_months()
-    scatter_pair()
+    bar_smos()
