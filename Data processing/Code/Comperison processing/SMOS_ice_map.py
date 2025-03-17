@@ -8,9 +8,7 @@ import cartopy.feature as cfeature
 import time
 from netCDF4 import Dataset
 
-folder_path_oct = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\oct"
-folder_path_nov = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\nov"
-folder_path_dec = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\dec"
+folder_path_2013= r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013"
 
 one_smos_file = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\oct\SMOS_Icethickness_v3.3_north_20211015.nc"
 
@@ -116,6 +114,6 @@ def store_to_file(lon, lat, si_thickness, output_file):
 
 if __name__ == "__main__":
     #print_nc_metadata(one_smos_file)
-    lat, lon, monthly_mean_thickness = get_data(folder_path_dec)
-    #plot_data(lon, lat, monthly_mean_thickness)
-    store_to_file(lon, lat, monthly_mean_thickness, r'C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\dec_mean_thickness.nc')
+    lat, lon, monthly_mean_thickness = get_data(folder_path_2013)
+    plot_data(lon, lat, monthly_mean_thickness)
+    #store_to_file(lon, lat, monthly_mean_thickness, r'C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_mean_thickness.nc')
