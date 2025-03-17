@@ -506,7 +506,6 @@ def average_difference_target_source(cryo_interp, cpom_interp, awi_interp, smos_
 			rmse_cryo.append(np.sqrt(np.mean((cryo_flat[mask] - smos_bin) ** 2)))
 			rmse_cpom.append(np.sqrt(np.mean((cpom_flat[mask] - smos_bin) ** 2)))
 			rmse_awi.append(np.sqrt(np.mean((awi_flat[mask] - smos_bin) ** 2)))   
-
 		else:
 			# Append NaN if no values in bin to keep dimensions consistent
 			mean_differences_cryo.append(np.nan)

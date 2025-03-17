@@ -10,7 +10,7 @@ from netCDF4 import Dataset
 
 folder_path_2013= r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013"
 
-one_smos_file = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\oct\SMOS_Icethickness_v3.3_north_20211015.nc"
+one_smos_file = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\SMOS_Icethickness_v3.3_north_20130321.nc"
 
 def print_nc_metadata(file_path):
     """Prints metadata from a NetCDF (.nc) file."""
@@ -36,11 +36,9 @@ def get_data(folder_path):
     # Initialize lists to store daily data
     si_tickness_data = []
     lat, lon = None, None  # Placeholder for coordinates
-    
     for filename in os.listdir(folder_path):
         if filename.endswith('.nc'):
             file_path = os.path.join(folder_path, filename)
-            
             with nc.Dataset(file_path, "r") as dataset:
                 si_thickness = dataset.variables['sea_ice_thickness'][:]
                 land_mask = dataset.variables['land'][:]                
@@ -113,7 +111,8 @@ def store_to_file(lon, lat, si_thickness, output_file):
 
 
 if __name__ == "__main__":
-    #print_nc_metadata(one_smos_file)
+    print_nc_metadata(one_smos_file)
     lat, lon, monthly_mean_thickness = get_data(folder_path_2013)
-    plot_data(lon, lat, monthly_mean_thickness)
+    #plot_data(lon, lat, monthly_mean_thickness)
+    print(lon.shape, lat.shape, monthly_mean_thickness.shape)
     #store_to_file(lon, lat, monthly_mean_thickness, r'C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_mean_thickness.nc')

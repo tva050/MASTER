@@ -7,25 +7,12 @@ from  scipy.interpolate import griddata
 import pandas as pd
 from pyproj import Proj, transform
 
-paths = [
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130321.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130322.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130323.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130324.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130326.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130425.txt"
-]
+one_smos_file = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\SMOS_Icethickness_v3.3_north_20130321.nc"
 
 
-def get_data(path):
-	# Read the CSV file while automatically handling headers and mixed data types
-	df = pd.read_csv(path)
-
-	# Extract only the numerical columns we need
-	lat = df["lat"].astype(float).values
-	lon = df["lon"].astype(float).values
-	thickness = df["thickness"].astype(float).values
-
-	mask = (thickness != -99999.) & (thickness != 0.0)
-	thickness = np.where(mask, thickness, np.nan)
-	return lat, lon, thickness
+def get_data(file_path):
+    data = nc.Dataset(file_path)
+    print(data.variables.keys())
+    
+    
+get_data(one_smos_file)
