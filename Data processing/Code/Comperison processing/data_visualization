@@ -677,7 +677,7 @@ if __name__ == '__main__':
 	#barplot(cryo_interp, w99_interp, cpom_interp, awi_interp, si_thickness_smos_dec)
 	#barplot_all_months()
 	#average_difference_target_source(cryo_interp, cpom_interp, awi_interp, si_thickness_smos_nov)
-	#plot_normalized_cs2_vs_smos(cryo_interp, si_thickness_smos_nov)
-	heatmap_sea_ice_difference(cryo_interp_oct, w99_interp_oct, cpom_interp_oct, awi_interp_oct, si_thickness_smos_oct)
+	#plot_normalized_cs2_vs_smos(cryo_interp_nov, si_thickness_smos_nov)
+	#heatmap_sea_ice_difference(cryo_interp_oct, w99_interp_oct, cpom_interp_oct, awi_interp_oct, si_thickness_smos_oct)
 	#map_difference(cryo_interp_dec, si_thickness_smos_dec, lat_smos_dec, lon_smos_dec, "December")
  

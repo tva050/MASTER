@@ -130,7 +130,7 @@ target_lat, target_lon = load_oib_lat_lon(oib_paths)
 lat_cryo, lon_cryo, cryo_si = get_cryo(cryo_path)
 lat_smos, lon_smos, smos_si = get_smos(smos_path)
 
-cryo_interp = interpolate_data(lat_cryo, lon_cryo, cryo_si, target_lat, target_lon)
+#cryo_interp = interpolate_data(lat_cryo, lon_cryo, cryo_si, target_lat, target_lon)
 smos_interp = interpolate_data(lat_smos, lon_smos, smos_si, target_lat, target_lon)
 
 def multiple_box_plot_oib(oib_sit, smos_interp, cryo_interp):
@@ -187,4 +187,4 @@ def multiple_box_plot_oib(oib_sit, smos_interp, cryo_interp):
 	plt.show()
 
 
-multiple_box_plot_oib(all_thickness, smos_interp, cryo_interp)
+multiple_box_plot_oib(all_thickness, smos_interp, cryo_si)
