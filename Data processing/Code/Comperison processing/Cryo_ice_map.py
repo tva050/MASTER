@@ -13,7 +13,7 @@ dec_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processi
 
 def get_data(path):
     data = nc.Dataset(path)
-    
+    #print(data.variables.keys())
     lat = data.variables['Latitude'][:]
     lon = data.variables['Longitude'][:]
     si_thickness = data.variables['Sea_Ice_Thickness'][:]

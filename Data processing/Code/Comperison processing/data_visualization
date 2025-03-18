@@ -157,6 +157,7 @@ awi_interp_dec  = interpolate_data(lat_awi_dec, lon_awi_dec, si_thickness_awi_de
 w99_interp_dec  = interpolate_data(lat_w99_dec, lon_w99_dec, si_thickness_w99_dec, lat_smos_dec, lon_smos_dec)
 
 
+
 def box_plot_comp(cryo_interp, smos_si):
 	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
 	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']

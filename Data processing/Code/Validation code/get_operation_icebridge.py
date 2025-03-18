@@ -34,6 +34,7 @@ def get_data(path):
 	thickness = np.where(mask, thickness, np.nan)
 	return lat, lon, thickness
 
+
 def get_smos(path):
 	data = nc.Dataset(path)
 	#print(data.variables.keys())
@@ -72,6 +73,67 @@ def latlon_to_polar(lat, lon):
 	x, y = transform(wgs84, polar_stereo, lon, lat)
 	return x, y
 
+def extract_all_oib(oib_paths):
+	all_x, all_y, all_thickness = [], [], []
+	for path in oib_paths:
+		lat, lon, thickness = get_data(path)
+		x, y = latlon_to_polar(lat, lon)
+
+		all_x.extend(x)
+		all_y.extend(y)
+		all_thickness.extend(thickness)
+	return all_x, all_y, all_thickness
+
+def load_oib_lat_lon(file_paths):
+    """Loads lat/lon coordinates from OIB text files and stacks them."""
+    lat_list, lon_list = [], []
+
+    for file in file_paths:
+        try:
+            # Skip the header and read lat/lon columns
+            data = np.genfromtxt(file, delimiter=",", skip_header=1, usecols=(0, 1), dtype=float)
+            
+            # Check if data is empty
+            if data.size == 0:
+                print(f"Warning: {file} is empty or contains only headers.")
+                continue
+            
+            lat_list.append(data[:, 0])  # Latitude
+            lon_list.append(data[:, 1])  # Longitude
+
+        except Exception as e:
+            print(f"Error reading {file}: {e}")
+
+    if not lat_list or not lon_list:
+        raise ValueError("No valid data was loaded from the files.")
+
+    # Concatenate all data points into single arrays
+    target_lat = np.concatenate(lat_list)
+    target_lon = np.concatenate(lon_list)
+
+    return target_lat, target_lon
+
+def interpolate_data(source_lat, source_lon, source_si, target_lat, target_lon):
+	"""Interpolates source_si to target_lat/lon grid using SciPy's griddata."""
+	source_points = np.array([source_lat.flatten(), source_lon.flatten()]).T
+	source_values = source_si.flatten()
+
+	target_points = np.array([target_lat.flatten(), target_lon.flatten()]).T
+
+	source_interp = griddata(source_points, source_values, target_points, method='linear')
+
+	return source_interp
+
+lat_oib, lon_oib, thickness_oib = extract_all_oib(oib_paths)
+lat_smos, lon_smos, thickness_smos = get_smos(smos_path)
+lat_cryo, lon_cryo, thickness_cryo = get_cryo(cryo_path)
+print(thickness_smos.shape)
+stacked_lon_oib, stacked_lat_oib = load_oib_lat_lon(oib_paths)
+
+smos_interp = interpolate_data(lat_smos, lon_smos, thickness_smos, stacked_lat_oib, stacked_lon_oib)
+cryo_interp = interpolate_data(lat_cryo, lon_cryo, thickness_cryo, stacked_lat_oib, stacked_lon_oib)
+print(smos_interp.shape)
+print(cryo_interp.shape)
 def plot_all_data(paths):
 	"""Plot sea ice thickness from multiple files on the same map."""
 	all_x, all_y, all_thickness = [], [], []
@@ -105,17 +167,7 @@ def plot_all_data(paths):
 
 	plt.title('Sea Ice Thickness (Multiple Paths)')
 	plt.show()
- 
-
-def interpolate_data(source_lat, source_lon, source_si, target_lat, target_lon):
-	source_points = np.array([source_lat.flatten(), source_lon.flatten()]).T
-	source_values = source_si.flatten()
-	
-	target_points = np.array([target_lat.flatten(), target_lon.flatten()]).T
-	
-	source_interp = griddata(source_points, source_values, target_points, method='linear')
-	return source_interp.reshape(target_lat.shape)
-	
+ 	
 	
 def smos_OIB(OIB_path, smos_path):
 	all_x, all_y, all_thickness = [], [], []
@@ -286,87 +338,6 @@ def pair_scatter_plot(oib_paths, smos_path, cryo_path):
 	plt.show()
 		
 
-def interpolate_to_match(source_data, target_shape):
-	"""Interpolates source_data to match target_shape using griddata."""
-	source_shape = source_data.shape
-	print(source_shape)
-	# Create original grid
-	x_source = np.linspace(0, 1, source_shape[0])
-	y_source = np.linspace(0, 1, source_shape[1])
-	xx_source, yy_source = np.meshgrid(x_source, y_source)
-
-	# Create target grid
-	x_target = np.linspace(0, 1, target_shape[1])  # Match width
-	y_target = np.linspace(0, 1, target_shape[2])  # Match height
-	xx_target, yy_target = np.meshgrid(x_target, y_target)
-
-	# Flatten and interpolate
-	points = np.c_[xx_source.ravel(), yy_source.ravel()]
-	values = source_data.ravel()
-
-	# Interpolating SMOS to match target dimensions
-	interpolated_data = griddata(points, values, (xx_target, yy_target), method='linear')
-
-	return interpolated_data.reshape(target_shape[1], target_shape[2])
-
-def multiple_box_plot_oib(oib_sit, smos_si, cryo_si):
-	# Ensure all have the same shape
-	if oib_sit.shape != cryo_si.shape:
-		raise ValueError(f"OIB and CryoSat-2 should have the same shape! "
-						 f"oib: {oib_sit.shape}, cryo: {cryo_si.shape}")
-
-	if smos_si.shape != oib_sit.shape[1:]:  # (896, 608) expected
-		print(f"Interpolating SMOS from {smos_si.shape} to {oib_sit.shape[1:]}...")
-		smos_si = interpolate_to_match(smos_si, oib_sit.shape)
-
-	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
-	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
-
-	# Flatten arrays
-	oib_flat = oib_sit.ravel()
-	smos_flat = smos_si.ravel()
-	cryo_flat = cryo_si.ravel()
-
-	# Mask NaN values
-	valid_mask = ~np.isnan(oib_flat) & ~np.isnan(smos_flat) & ~np.isnan(cryo_flat)
-	oib_flat, smos_flat, cryo_flat = oib_flat[valid_mask], smos_flat[valid_mask], cryo_flat[valid_mask]
-
-	# Bin the data
-	binned_oib_smos_data, binned_oib_cryo_data = [], []
-
-	for i in range(len(bins) - 1):
-		mask = (oib_flat >= bins[i]) & (oib_flat < bins[i + 1])
-		binned_oib_smos_data.append(smos_flat[mask])
-		binned_oib_cryo_data.append(cryo_flat[mask])
-
-	# Create subplots (1 row, 2 columns)
-	fig, axes = plt.subplots(1, 2, sharey=True, figsize=(12, 5))
-
-	# Boxplots
-	axes[0].boxplot(binned_oib_smos_data, labels=bin_labels, medianprops=dict(color='black'))
-	axes[0].set_title("OIB vs SMOS")
-	axes[0].set_xlabel("OIB SIT [m]")
-	axes[0].set_ylabel("SMOS SIT [m]")
-
-	axes[1].boxplot(binned_oib_cryo_data, labels=bin_labels, medianprops=dict(color='black'))
-	axes[1].set_title("OIB vs CryoSat-2")
-	axes[1].set_xlabel("OIB SIT [m]")
-	axes[1].set_ylabel("CryoSat-2 SIT [m]")
-
-	# Scatter plots
-	for j in range(len(bins) - 1):
-		x_positions_smos = np.random.normal(j + 1, 0.05, size=len(binned_oib_smos_data[j]))
-		axes[0].scatter(x_positions_smos, binned_oib_smos_data[j], alpha=0.4, color='salmon', s=10)
-
-		x_positions_cryo = np.random.normal(j + 1, 0.05, size=len(binned_oib_cryo_data[j]))
-		axes[1].scatter(x_positions_cryo, binned_oib_cryo_data[j], alpha=0.4, color='teal', s=10)
-
-	for ax in axes:
-		ax.yaxis.set_tick_params(labelleft=True)
-
-	plt.tight_layout()
-	plt.show()
-
 def bar_plot(oib_paths, smos_path, cryo_path):
 	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
 	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
@@ -440,19 +411,68 @@ def bar_plot(oib_paths, smos_path, cryo_path):
 	plt.tight_layout()
 	plt.show()
 	
+def multiple_box_plot_oib(oib_sit, smos_interp, cryo_interp):
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+
+	oib_sit = np.array(oib_sit)
+	smos_interp = np.array(smos_interp)
+	cryo_interp = np.array(cryo_interp) 
+
+	# Flatten arrays
+	oib_flat = oib_sit.flatten()
+	smos_flat = smos_interp.flatten()
+	cryo_flat = cryo_interp.flatten()
+
+	# Mask NaN values
+	valid_mask = ~np.isnan(oib_flat) & ~np.isnan(smos_flat) & ~np.isnan(cryo_flat)
+	oib_flat, smos_flat, cryo_flat = oib_flat[valid_mask], smos_flat[valid_mask], cryo_flat[valid_mask]
+
+	# Bin the data
+	binned_oib_smos_data, binned_oib_cryo_data = [], []
+
+	for i in range(len(bins) - 1):
+		mask = (oib_flat >= bins[i]) & (oib_flat < bins[i + 1]) 
+		binned_oib_smos_data.append(smos_flat[mask])
+		binned_oib_cryo_data.append(cryo_flat[mask])
+
+	# Create subplots (1 row, 2 columns)
+	fig, axes = plt.subplots(1, 2, sharey=True, figsize=(12, 5))
+
+	# Boxplots
+	axes[0].boxplot(binned_oib_smos_data, labels=bin_labels, medianprops=dict(color='black'))
+	axes[0].set_title("OIB vs SMOS")
+	axes[0].set_xlabel("OIB SIT [m]")
+	axes[0].set_ylabel("SMOS SIT [m]")
+
+	axes[1].boxplot(binned_oib_cryo_data, labels=bin_labels, medianprops=dict(color='black'))
+	axes[1].set_title("OIB vs CryoSat-2")
+	axes[1].set_xlabel("OIB SIT [m]")
+	axes[1].set_ylabel("CryoSat-2 SIT [m]")
+
+	# Scatter plots
+	for j in range(len(bins) - 1):
+		x_positions_smos = np.random.normal(j + 1, 0.05, size=len(binned_oib_smos_data[j]))
+		axes[0].scatter(x_positions_smos, binned_oib_smos_data[j], alpha=0.4, color='salmon', s=10)
+
+		x_positions_cryo = np.random.normal(j + 1, 0.05, size=len(binned_oib_cryo_data[j]))
+		axes[1].scatter(x_positions_cryo, binned_oib_cryo_data[j], alpha=0.4, color='teal', s=10)
+
+	for ax in axes:
+		ax.yaxis.set_tick_params(labelleft=True)
+
+	plt.tight_layout()
+	plt.show()
+
 # Load data and plot
 #plot_all_data(paths)
 #lat, lon, thickness = get_data(oib_paths[0])
-lat_smos, lon_smos, thickness_smos = get_smos(smos_path)
-#interpolated_smos = interpolate_data(lat_smos, lon_smos, thickness_smos, lat, lon)
 
-
-lat_cryo, lon_cryo, thickness_cryo = get_cryo(cryo_path)
 
 #smos_OIB(paths, smos_path)
 #cryo_OIB(oib_paths, cryo_path)
 #difference_calc(cryo_path, smos_path, paths)
 #mean_diff(oib_paths, smos_path, cryo_path)
 #pair_scatter_plot(oib_paths, smos_path, cryo_path)
-multiple_box_plot_oib(thickness_smos, thickness_cryo, thickness_smos)
 #bar_plot(oib_paths, smos_path, cryo_path)
+multiple_box_plot_oib(thickness_oib, smos_interp, cryo_interp)
