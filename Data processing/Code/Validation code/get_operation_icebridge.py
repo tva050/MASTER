@@ -22,9 +22,9 @@ oib_paths = [
 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120329.txt"
 ]
 
-smos_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_mean_thickness.nc"
+smos_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2012\2012_mean_thickness.nc"
 
-cryo_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2013\uit_cryosat2_L3_EASE2_nh25km_2013_03_v3.nc"
+cryo_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2012\uit_cryosat2_L3_EASE2_nh25km_2012_03_v3.nc"
 
 
 # -------------------------- Data Processing -------------------------- #
@@ -228,8 +228,8 @@ def pair_scatter_plot(all_thickness, smos_interp, bins=100):
 
 	# Labels and title
 	plt.xlabel("OIB Sea Ice Thickness (m)")
-	plt.ylabel("SMOS Sea Ice Thickness (m)")
-	plt.title("Pair Scatter Plot: OIB vs SMOS Thickness (Density Colored)")
+	plt.ylabel("CryoSat-2 Sea Ice Thickness (m)")
+	plt.title("Pair Scatter Plot: OIB vs CryoSat-2 Thickness (Density Colored)")
 	plt.grid(True, linestyle="--", alpha=0.5)
 	plt.show()
 	
@@ -401,7 +401,7 @@ if __name__ == '__main__':
 	#cryo_oib(all_x, all_y, all_thickness, cryo_path)
 	
 	""" Data Analysis """
-	#pair_scatter_plot(all_thickness, smos_interp)
+	pair_scatter_plot(all_thickness, cryo_interp)
 	#barplot(cryo_interp, smos_interp, all_thickness)
 	#boxplot(cryo_interp, smos_interp, all_thickness)
 	#heatmap(cryo_interp, smos_interp, all_thickness)
