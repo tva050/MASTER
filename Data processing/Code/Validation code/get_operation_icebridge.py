@@ -6,14 +6,15 @@ import netCDF4 as nc
 from  scipy.interpolate import griddata
 import pandas as pd
 from pyproj import Proj, Transformer
+import seaborn as sns
 
 oib_paths = [
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130321.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130322.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130323.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130324.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130326.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\IDCSI4_20130425.txt"
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130321.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130322.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130323.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130324.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130326.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130425.txt"
 ]
 
 smos_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_mean_thickness.nc"
@@ -141,7 +142,7 @@ def plot_oib(lat, lon, thickness):
 
 	plt.title('Sea Ice Thickness (Multiple Paths)')
 	plt.show()
- 	
+	 
 def smos_oib(all_x, all_y, all_thickness, smos_path):
 	smos_lat, smos_lon, smos_thickness = get_smos(smos_path)
 	
@@ -307,18 +308,86 @@ def boxplot(cryo_interp, smos_interp, all_thickness):
 	plt.show()
  
 def heatmap(cryo_interp, smos_interp, oib_sit):
-    bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
-    bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
-    satellite_products = ["CryoSat-2", "SMOS"]
-    
-    cryo_flat = cryo_interp.flatten()
-    smos_flat = smos_interp.flatten()
-    oib_flat = oib_sit.flatten()
-    
-    valid_mask = ~np.isnan(oib_flat) & ~np.isnan(cryo_flat) & ~np.isnan(smos_flat)
-    oib_flat, cryo_flat, smos_flat = oib_flat[valid_mask], cryo_flat[valid_mask], smos_flat[valid_mask]
-    
-    
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+	satellite_products = ["CryoSat-2", "SMOS"]
+	
+	cryo_flat = cryo_interp.flatten()
+	smos_flat = smos_interp.flatten()
+	oib_flat = oib_sit.flatten()
+	
+	valid_mask = ~np.isnan(oib_flat) & ~np.isnan(cryo_flat) & ~np.isnan(smos_flat)
+	oib_flat, cryo_flat, smos_flat = oib_flat[valid_mask], cryo_flat[valid_mask], smos_flat[valid_mask]
+	
+	mean_difference = np.zeros((len(satellite_products), len(bins) - 1))
+	
+	for i in range(len(bins) - 1):
+		mask = (oib_flat >= bins[i]) & (oib_flat < bins[i + 1])
+		mean_difference[0, i] = np.nanmean(cryo_flat[mask] - oib_flat[mask])
+		mean_difference[1, i] = np.nanmean(smos_flat[mask] - oib_flat[mask])
+
+	plt.figure(figsize=(10, 6))
+	ax = sns.heatmap(mean_difference, annot=True, fmt=".2f", cmap='plasma', xticklabels=bin_labels, yticklabels=satellite_products, center=0)
+	plt.xlabel("OIB Sea Ice Thickness Bins [m]")
+	plt.ylabel("Satellite Product")
+	plt.title("Mean Difference from OIB Thickness")
+	plt.show()
+ 
+def differences(cryo_interp, smos_interp, oib_sit):
+    # Define bins and labels
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+ 
+	# Flatten data
+	cryo_flat = cryo_interp.flatten()
+	smos_flat = smos_interp.flatten()
+	oib_flat = oib_sit.flatten()
+ 
+	valid_mask = ~np.isnan(oib_flat) & ~np.isnan(cryo_flat) & ~np.isnan(smos_flat)
+	oib_flat, cryo_flat, smos_flat = oib_flat[valid_mask], cryo_flat[valid_mask], smos_flat[valid_mask]
+ 
+	mean_difference_cryo = []
+	mean_difference_smos = []
+ 
+	corr_cryo = []
+	corr_smos = []
+ 
+	rmse_cryo = []
+	rmse_smos = []
+ 
+	for i in range(len(bins) - 1):
+		mask = (oib_flat >= bins[i]) & (oib_flat < bins[i + 1])
+		oib_bin = oib_flat[mask]
+		cryo_bin = cryo_flat[mask]
+		smos_bin = smos_flat[mask]
+  
+		oib_mean = np.nanmean(oib_flat[mask])
+
+		mean_difference_cryo.append(np.nanmean(cryo_flat[mask]) - oib_mean)
+		mean_difference_smos.append(np.nanmean(smos_flat[mask]) - oib_mean)
+  
+		corr_cryo.append(np.corrcoef(oib_bin, cryo_bin)[0, 1])
+		corr_smos.append(np.corrcoef(oib_bin, smos_bin)[0, 1])
+
+		rmse_cryo.append(np.sqrt(np.nanmean((cryo_flat[mask] - oib_bin) ** 2)))
+		rmse_smos.append(np.sqrt(np.nanmean((smos_flat[mask] - oib_bin) ** 2)))
+	
+	# print results
+	print("-----------------OIB and CryoSat-2-----------------")
+	print(f"Mean Difference: {np.round(mean_difference_cryo, 3)}")
+	print(f"Correlation:     {np.round(corr_cryo, 3)}")
+	print(f"RMSE:            {np.round(rmse_cryo, 3)}")
+	print(f"Total Mean: {np.round(np.nanmean(mean_difference_cryo), 3)}")
+	print(f"Total RMSE: {np.round(np.nanmean(rmse_cryo), 3)}")
+	print("\n------------------OiB and SMOS------------------")
+	print(f"Mean Difference: {np.round(mean_difference_smos, 3)}")
+	print(f"Correlation: 	 {np.round(corr_smos, 3)}")
+	print(f"RMSE:            {np.round(rmse_smos, 3)}")
+	print(f"Total Mean: {np.round(np.nanmean(mean_difference_smos), 3)}")
+	print(f"Total RMSE: {np.round(np.nanmean(rmse_smos), 3)}")
+	print("\n-------------------------------------------------")
+	print("[0-0.2, 0.2-0.4, 0.4-0.6, 0.6-0.8, 0.8-1]")
+		   
  
 if __name__ == '__main__':
 	""" Data Visualization """
@@ -329,4 +398,6 @@ if __name__ == '__main__':
 	""" Data Analysis """
 	#pair_scatter_plot(all_thickness, smos_interp)
 	#barplot(cryo_interp, smos_interp, all_thickness)
-	boxplot(cryo_interp, smos_interp, all_thickness)
+	#boxplot(cryo_interp, smos_interp, all_thickness)
+	#heatmap(cryo_interp, smos_interp, all_thickness)
+	#differences(cryo_interp, smos_interp, all_thickness)
