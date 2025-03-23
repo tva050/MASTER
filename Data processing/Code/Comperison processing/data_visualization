@@ -137,7 +137,7 @@ def interpolate_data(source_lat, source_lon, source_si, target_lat, target_lon):
 	
 	target_points = np.array([target_lat.flatten(), target_lon.flatten()]).T
 	
-	source_interp = griddata(source_points, source_values, target_points, method='linear')
+	source_interp = griddata(source_points, source_values, target_points, method='nearest')
 	return source_interp.reshape(target_lat.shape)
 
 
@@ -617,6 +617,23 @@ def heatmap_sea_ice_difference(cryo_interp, w99_interp, cpom_interp, awi_interp,
     plt.ylabel("CryoSat-2 Products")
     plt.title("Mean Difference in SIT (Cryosat2 - SMOS), oct")
     plt.show()
+    
+def histogram(cryo_interp, smos_si):
+	# Flatten the arrays and remove NaN values
+	cryo_flat = cryo_interp.flatten()
+	smos_flat = smos_si.flatten()
+	
+	
+	plt.hist(cryo_flat, bins=100, color='skyblue', edgecolor='black', alpha=0.5)
+	plt.hist(smos_flat, bins=100, color='salmon', edgecolor='black', alpha=0.5)
+	# Set labels and title
+	plt.xlabel('Difference in SIT [m]')
+	plt.ylabel('Frequency')
+	plt.title('Histogram of CryoSat-2 and SMOS SIT Difference')
+	plt.grid(True)
+	
+	# Show plot
+	plt.show()
 
 def map_difference(cryo_interp, smos_interp, lat_smos, lon_smos, month_label=str):
     """ 
@@ -678,6 +695,6 @@ if __name__ == '__main__':
 	#barplot_all_months()
 	#average_difference_target_source(cryo_interp, cpom_interp, awi_interp, si_thickness_smos_nov)
 	#plot_normalized_cs2_vs_smos(cryo_interp_nov, si_thickness_smos_nov)
-	#heatmap_sea_ice_difference(cryo_interp_oct, w99_interp_oct, cpom_interp_oct, awi_interp_oct, si_thickness_smos_oct)
-	#map_difference(cryo_interp_dec, si_thickness_smos_dec, lat_smos_dec, lon_smos_dec, "December")
-	pass
+	heatmap_sea_ice_difference(cryo_interp_oct, w99_interp_oct, cpom_interp_oct, awi_interp_oct, si_thickness_smos_oct)
+	#map_difference(cryo_interp_oct, si_thickness_smos_oct, lat_smos_dec, lon_smos_dec, "December")
+	#histogram(cryo_interp_oct, si_thickness_smos_oct)
