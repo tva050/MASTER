@@ -81,7 +81,7 @@ def get_cryo(path):
 
 def latlon_to_polar(lat, lon):
 	"""Convert lat/lon (degrees) to North Polar Stereographic (meters)."""
-	# Define WGS84 (lat/lon) and Polar Stereographic projection
+	# Define WGS84 (lat/lon) and Polar Stereographic projection 
 	wgs84 = Proj(proj="latlong", datum="WGS84")
 	polar_stereo = Proj(proj="stere", lat_0=90, lon_0=-45, datum="WGS84", k=1, x_0=0, y_0=0)
 
@@ -518,12 +518,12 @@ def differences(cryo_interp, smos_interp, oib_sit):
 if __name__ == '__main__':
 	""" Data Visualization """
 	#plot_oib(all_x, all_y, all_thickness)
-	#smos_oib(all_x, all_y, all_thickness, smos_path)
+	smos_oib(all_x, all_y, all_thickness, smos_path)
 	#cryo_oib(all_x, all_y, all_thickness, cryo_path)	
 	#map_plot_used_data(all_x, all_y, all_thickness, cryo_lat, cryo_lon, cryo_thickness)
 	#plot_interpolated_data(all_x, all_y, all_thickness, all_x, all_y, cryo_interp, title="CryoSat-2 Interpolated vs OIB")
 	#hist_cryo_smos_oib_SIT(cryo_thickness, smos_thickness[0, :, :], all_thickness)
-	hist_before_after_interp(cryo_interp, smos_interp, all_thickness)
+	#hist_before_after_interp(cryo_interp, smos_interp, all_thickness)
 	""" Data Analysis """
 	#pair_scatter_plot(all_thickness, smos_interp)
 	#barplot(cryo_interp, smos_interp, all_thickness)

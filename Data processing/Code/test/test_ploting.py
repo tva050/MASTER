@@ -5,8 +5,11 @@ from cartopy import crs as ccrs, feature as cfeature
 import netCDF4 as nc
 from  scipy.interpolate import griddata
 import pandas as pd
-from pyproj import Proj, Transformer
+from pyproj import Proj, Transformer, transform
+import cartopy.crs as ccrs
 import seaborn as sns
+from mpl_toolkits.basemap import Basemap
+
 
 import warnings
 warnings.filterwarnings("ignore", message="facecolor will have no effect*")
@@ -97,7 +100,6 @@ smos_lat, smos_lon, smos_sit = get_smos(smos_path)
 cryo_lat, cryo_lon, cryo_sit = get_cryo(cryo_path)
 
 
-
 def plot_data_oib(lon, lat, si_thickness):
 	# Convert lon and lat to NumPy arrays if they are lists
 	lon = np.array(lon)
@@ -126,8 +128,6 @@ def plot_cryo_oib(oib_lat, oib_lon, oib_sit, cs_lat, cs_lon, cs_sit):
 	# Convert lon and lat to NumPy arrays if they are lists
 	oib_lon = np.array(oib_lon)
 	oib_lat = np.array(oib_lat)
-	#cs_lon = np.array(cs_lon)
-	#cs_lat = np.array(cs_lat)
 
 	# Create a figure and an axis with a polar projection
 	fig = plt.figure(figsize=(10, 10))
@@ -198,5 +198,49 @@ def hist_cryo_smos_oib(cryo_sit, smos_sit, oib_sit):
 
 
 
+def reproject_to_epsg3413(lon, lat):
+    """Convert lat/lon to EPSG:3413 (meters)."""
+    proj_latlon = Proj(proj="latlong", datum="WGS84")
+    proj_stereo = Proj(init="epsg:3413")
+    x, y = transform(proj_latlon, proj_stereo, lon, lat)
+    return x, y
+
+x_oib, y_oib = reproject_to_epsg3413(oib_lon, oib_lat)
+x_cryo, y_cryo = reproject_to_epsg3413(cryo_lon, cryo_lat)
+x_smos, y_smos = reproject_to_epsg3413(smos_lon, smos_lat)
+
+def interpolating_to_cryo(source_x, source_y, sit_data, target_x, target_y):
+	"""Interpolate OIB data to CryoSat-2 grid."""
+	source_x = source_x.flatten()
+	source_y = source_y.flatten()
+	source_sit = sit_data.flatten()
+	interpolated_sit = griddata((source_x, source_y), source_sit, (target_x, target_y), method='linear')  
+	return interpolated_sit
+
+interpolated_oib_sit = interpolating_to_cryo(np.array(x_oib), np.array(y_oib), np.array(oib_sit), x_cryo, y_cryo)
+interpolated_smos_sit = interpolating_to_cryo(x_smos, y_smos, smos_sit, x_cryo, y_cryo)
+
+
+def histogram(interp_oib, interp_smos, cryo_sit):
+	# Flatten the data
+	interp_oib = interp_oib.flatten()
+	interp_smos = interp_smos.flatten()
+	cryo_sit = cryo_sit.flatten()
+
+	# Create histogram
+	plt.hist(interp_oib, bins=100, alpha=0.5, color='green', label='Interpolated OIB Thickness')
+	plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
+	plt.hist(interp_smos, bins=100, alpha=0.5, color='red', label='Interpolated SMOS')
+	
+	# Labels and title
+	plt.xlabel("Sea Ice Thickness [m]")
+	plt.ylabel("Frequency")
+	plt.title("Histogram: Comparison of CryoSat-2 and SMOS Thickness with Interpolated OIB")
+	plt.legend()
+	plt.grid(True, linestyle="--", alpha=0.5)
+	plt.show()
 #plot_cryo_oib(oib_lat, oib_lon, oib_sit, cryo_lat, cryo_lon, cryo_sit)
 #plot_smos_oib(oib_lat, oib_lon, oib_sit, smos_lat, smos_lon, smos_sit[0,:,:])
+
+histogram(interpolated_oib_sit, interpolated_smos_sit, cryo_sit)
+#plot_data_oib(oib_lon, oib_lat, oib_sit)
