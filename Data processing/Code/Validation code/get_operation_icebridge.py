@@ -8,16 +8,16 @@ import pandas as pd
 from pyproj import Proj, Transformer
 import seaborn as sns
 
-""" oib_paths = [
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110316.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110317.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110318.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110322.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110323.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110325.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110326.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110328.txt"
-] """
+#oib_paths = [
+#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110316.txt",
+#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110317.txt",
+#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110318.txt",
+#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110322.txt",
+#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110323.txt",
+#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110325.txt",
+#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110326.txt",
+#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110328.txt"
+#]
 
 oib_paths = [
 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130321.txt",
@@ -28,7 +28,7 @@ oib_paths = [
 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130326.txt"
 ]
 
-smos_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\20130321-26_mean_sit.nc"
+smos_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_mean_thickness.nc"
 
 cryo_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2013\uit_cryosat2_L3_EASE2_nh25km_2013_03_v3.nc"
 
@@ -277,7 +277,7 @@ def hist_cryo_smos_oib_SIT(cryo_sit, smos_sit, oib_sit):
 	plt.figure(figsize=(8, 6))
 	plt.hist(oib_sit, bins=100, alpha=0.5, color='green', label='OIB Thickness')
 	plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
-	plt.hist(smos_sit, bins=100, alpha=0.5, color='red', label='CryoSat-2 (After Interpolation)')
+	plt.hist(smos_sit, bins=100, alpha=0.5, color='red', label='SMOS')
 	
 	# Labels and title
 	plt.xlabel("Sea Ice Thickness [m]")
@@ -298,12 +298,12 @@ def hist_before_after_interp(before_interp, after_interp, oib_thickness):
 	plt.figure(figsize=(8, 6))
 	plt.hist(oib_thickness, bins=100, alpha=0.5, color='green', label='OIB Thickness')
 	plt.hist(before_interp, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
-	plt.hist(after_interp, bins=100, alpha=0.5, color='red', label='CryoSat-2 (After Interpolation)')
+	plt.hist(after_interp, bins=100, alpha=0.5, color='red', label='SMOS')
  
 	# Labels and title
 	plt.xlabel("Sea Ice Thickness (m)")
 	plt.ylabel("Frequency")
-	plt.title("Histogram: CryoSat-2 Thickness Before and After Interpolation")
+	plt.title("Histogram: CS and SMOS Thickness Before and After Interpolation")
 	plt.legend()
 	plt.grid(True, linestyle="--", alpha=0.5)
 	plt.show()
@@ -523,7 +523,7 @@ if __name__ == '__main__':
 	#map_plot_used_data(all_x, all_y, all_thickness, cryo_lat, cryo_lon, cryo_thickness)
 	#plot_interpolated_data(all_x, all_y, all_thickness, all_x, all_y, cryo_interp, title="CryoSat-2 Interpolated vs OIB")
 	#hist_cryo_smos_oib_SIT(cryo_thickness, smos_thickness[0, :, :], all_thickness)
-	#hist_before_after_interp(cryo_interp, smos_interp, all_thickness)
+	hist_before_after_interp(cryo_interp, smos_interp, all_thickness)
 	""" Data Analysis """
 	#pair_scatter_plot(all_thickness, smos_interp)
 	#barplot(cryo_interp, smos_interp, all_thickness)

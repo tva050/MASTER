@@ -83,8 +83,8 @@ def latlon_to_polar(lat, lon):
 def extract_all_oib(oib_paths):
 	all_x, all_y, all_thickness = [], [], []
 	for path in oib_paths:
-		lat, lon, thickness = get_data(path)
-		x, y = latlon_to_polar(lat, lon)
+		x, y, thickness = get_data(path)
+		#x, y = latlon_to_polar(lat, lon)
 
 		all_x.extend(x)
 		all_y.extend(y)
