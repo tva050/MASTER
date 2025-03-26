@@ -45,7 +45,7 @@ def get_data(folder_path):
                 si_thickness = dataset.variables['sea_ice_thickness'][:]
                 
                 if 'land' in dataset.variables:
-                    land_mask = dataset.variables['land'][0, :, :]  # Extract first time step
+                    land_mask = dataset.variables['land'][:]  # Extract first time step
                 else:
                     print(f"Warning: 'land' variable not found in {filename}. Using default mask.")
                     land_mask = np.zeros_like(si_thickness)  # Default to no land mask          

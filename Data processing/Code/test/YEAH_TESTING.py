@@ -118,49 +118,19 @@ print('Reprojected OIB:', x_oib.shape, y_oib.shape)
 print('Reprojected SMOS:', x_smos.shape, y_smos.shape)
 print('Reprojected Cryo:', x_cryo.shape, y_cryo.shape)
 
-
-def resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radiues = 12500):
-	""" 
-	Resample oib data onto a new grid using weighted average based on uncertainty.
- 	"""
-	target_tree = cKDTree(np.column_stack([x_target.ravel(), y_target.ravel()]))
-	
-	# initialize arrays to store resampled data and weights sums
-	resampled_sit = np.full(x_target.shape, np.nan)
-	weights_sum = np.full(x_target.shape, 0.0)
- 
-	source_sit = source_sit.ravel()
-	source_sit_un = source_sit_un.ravel()
-	x_source = x_source.ravel()
-	y_source = y_source.ravel()
- 
-	for i in range(len(source_sit)):
-		if np.isnan(source_sit[i]) or np.isnan(source_sit_un[i]):
-			continue
-		
-		indices = target_tree.query_ball_point([x_source[i], y_source[i]], radiues)
-
-		weigth = 1 / source_sit_un[i]
-
-		for idx in indices:
-			row, col = np.unravel_index(idx, x_target.shape)
-			resampled_sit[row, col] = (np.nansum([resampled_sit[row, col] * weights_sum[row, col], oib_sit[i] * weigth]) / (weights_sum[row, col] + weigth))
-			weights_sum[row, col] += weigth
-   
-	resampled_sit = np.ma.masked_invalid(resampled_sit)
-	return resampled_sit
-
-def resample_to_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radius=12500):
+def resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radius=12500):
     """ 
-    Resample source data onto a new grid using a weighted average based on uncertainty.
+    Resample source data onto a new grid using weighted average based on uncertainty.
+    If no valid data, leave as NaN.
+    If no points are found in the radius, set to NaN.
     """
-    target_tree = cKDTree(np.column_stack([x_target.ravel(), y_target.ravel()]))
+    target_tree = cKDTree(np.column_stack([x_target.ravel(), y_target.ravel()]))  # Tree for faster lookup
 
     # Initialize arrays to store resampled data and weight sums
     resampled_sit = np.full(x_target.shape, np.nan)
-    weights_sum = np.full(x_target.shape, 0.0)
+    weights_sum = np.zeros(x_target.shape)
 
-    # Flatten inputs for easier indexing
+    # Flatten all arrays for iteration
     source_sit = source_sit.ravel()
     source_sit_un = source_sit_un.ravel()
     x_source = x_source.ravel()
@@ -169,38 +139,39 @@ def resample_to_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_
     for i in range(len(source_sit)):
         if np.isnan(source_sit[i]) or np.isnan(source_sit_un[i]):
             continue  # Skip invalid data points
+        
+        indices = target_tree.query_ball_point([x_source[i], y_source[i]], radius)
 
-        indices = np.array(target_tree.query_ball_point([x_source[i], y_source[i]], radius))
-        indices = indices[indices < x_target.size]  # Ensure indices are within valid range
+        if not indices:
+            continue  # If no neighbors are found, skip
 
-        if len(indices) == 0:
-            continue  # Skip if no neighbors found
-
-        # Compute weight, avoiding division by zero
-        weigth = 1 / source_sit_un[i] if source_sit_un[i] > 0 else 0
+        weight = 1 / source_sit_un[i] if source_sit_un[i] != 0 else 0  # Avoid division by zero
 
         for idx in indices:
-            if idx >= x_target.size:
-                continue  # Skip out-of-bounds index
-
-            row, col = np.unravel_index(idx, x_target.shape)
+            if idx >= x_target.size:  # Ensure valid index
+                continue
             
-            # Compute weighted sum only if denominator is valid
-            denominator = weights_sum[row, col] + weigth
-            if denominator > 0:
-                resampled_sit[row, col] = np.nansum([
-                    resampled_sit[row, col] * weights_sum[row, col], 
-                    source_sit[i] * weigth
-                ]) / denominator
+            row, col = np.unravel_index(idx, x_target.shape)
 
-            weights_sum[row, col] += weigth  # Update weight sum
+            # Avoid operations on uninitialized values
+            if np.isnan(resampled_sit[row, col]):
+                resampled_sit[row, col] = 0
 
-    resampled_sit = np.ma.masked_invalid(resampled_sit)
-    return resampled_sit
+            # Weighted sum calculation
+            resampled_sit[row, col] = (resampled_sit[row, col] * weights_sum[row, col] + source_sit[i] * weight) / (weights_sum[row, col] + weight)
+            weights_sum[row, col] += weight
+
+    # Mask invalid values (no data points found)
+    resampled_sit[weights_sum == 0] = np.nan
+
+    return np.ma.masked_invalid(resampled_sit)
+
 
 resampled_oib_sit = resample_to_cryo_grid(x_oib, y_oib, oib_sit, oib_sit_un, x_cryo, y_cryo)
-resampled_smos_sit = resample_to_grid(x_smos, y_smos, smos_sit, smos_sit_un, x_cryo, y_cryo)
-print('Resampled SMOS:', resampled_smos_sit)
+resampled_smos_sit = resample_to_cryo_grid(x_smos, y_smos, smos_sit, smos_sit_un, x_cryo, y_cryo)
+print('Resampled OIB:', resampled_oib_sit.shape)
+print('Resampled SMOS:', resampled_smos_sit.shape)
+
 
 def hist_cryo_smos_oib(cryo_sit, oib_sit):
 	cryo_sit = cryo_sit.flatten()
@@ -239,5 +210,6 @@ def plot_gridded_data(x_cryo, y_cryo, gridded_oib_sit):
 	plt.show()
 	
 #hist_cryo_smos_oib(oib_sit, resampled_oib_sit)
-plot_gridded_data(cryo_lon, cryo_lat, resampled_smos_sit)
-hist_cryo_smos_oib(smos_sit, resampled_smos_sit)
+#plot_gridded_data(cryo_lon, cryo_lat, resampled_smos_sit)
+#plot_gridded_data(cryo_lon, cryo_lat, resampled_oib_sit)
+#hist_cryo_smos_oib(smos_sit, resampled_smos_sit)

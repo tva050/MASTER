@@ -273,7 +273,7 @@ def hist_cryo_smos_oib(cryo_sit, gridded_data):
 	plt.grid(True, linestyle="--", alpha=0.5)
 	plt.show()
 
-hist_cryo_smos_oib(cryo_sit, gridded_smos_sit)
+hist_cryo_smos_oib(smos_sit, gridded_smos_sit)
 plot_gridded_data(cryo_lon, cryo_lat, gridded_smos_sit)
 
 
