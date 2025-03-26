@@ -99,7 +99,6 @@ oib_lat, oib_lon, oib_sit = extract_all_oib(oib_paths_2013)
 smos_lat, smos_lon, smos_sit = get_smos(smos_path)
 cryo_lat, cryo_lon, cryo_sit = get_cryo(cryo_path)
 
-
 def plot_data_oib(lon, lat, si_thickness):
 	# Convert lon and lat to NumPy arrays if they are lists
 	lon = np.array(lon)
@@ -123,6 +122,8 @@ def plot_data_oib(lon, lat, si_thickness):
 	
 	plt.title('Sea Ice Thickness RAW')
 	plt.show()
+
+plot_data_oib(oib_lon, oib_lat, oib_sit)
 
 def plot_cryo_oib(oib_lat, oib_lon, oib_sit, cs_lat, cs_lon, cs_sit):
 	# Convert lon and lat to NumPy arrays if they are lists
@@ -196,8 +197,7 @@ def hist_cryo_smos_oib(cryo_sit, smos_sit, oib_sit):
 
 # ----------------------- Product processing ----------------------- #
 
-
-
+# https://nsidc.org/data/user-resources/help-center/guide-nsidcs-polar-stereographic-projection
 def reproject_to_epsg3413(lon, lat):
 	"""Convert lat/lon to EPSG:3413 (meters)."""
 	proj_latlon = Proj(proj="latlong", datum="WGS84")
@@ -213,93 +213,130 @@ x_smos, y_smos = reproject_to_epsg3413(smos_lon, smos_lat)
 # ----------------------- Interpolation Methods ----------------------- #
 
 def interpolating_to_cryo(source_x, source_y, sit_data, target_x, target_y):
-	"""Interpolate OIB data to CryoSat-2 grid."""
-	source_x = source_x.flatten()
+	"""Interpolate to CryoSat-2 grid."""
+	source_x = source_x.flatten() 
 	source_y = source_y.flatten()
 	source_sit = sit_data.flatten()
-	interpolated_sit = griddata((source_x, source_y), source_sit, (target_x, target_y), method='nearest')  
-	return interpolated_sit
+	interpolated_sit = griddata((source_x, source_y), source_sit, (target_x, target_y), method='nearest') 
+	return interpolated_sit  # Return interpolated values at target locations for sea ice thickness data 
 
 def idw_interpolation_gpt(x_source, y_source, values_source, x_target, y_target, power=2, k=5):
-    """Perform Inverse Distance Weighting (IDW) interpolation.
+	"""Perform Inverse Distance Weighting (IDW) interpolation.
 
-    Args:
-        x_source, y_source: Source coordinates (e.g., OIB).
-        values_source: Source values (e.g., OIB thickness).
-        x_target, y_target: Target coordinates (e.g., SMOS).
-        power: Power parameter for IDW (default=2).
-        k: Number of nearest neighbors to use (default=5).
+	Args:
+		x_source, y_source: Source coordinates (e.g., OIB)
+		values_source: Source values (e.g., OIB thickness).
+		x_target, y_target: Target coordinates (e.g., SMOS).
+		power: Power parameter for IDW (default=2).
+		k: Number of nearest neighbors to use (default=5).
 
-    Returns:
-        Interpolated values at target locations.
-    """
-    # Remove NaN values from source data
-    mask = ~np.isnan(values_source)
-    x_source, y_source, values_source = x_source[mask], y_source[mask], values_source[mask]
+	Returns:
+		Interpolated values at target locations.
+	"""
+	# Remove NaN values from source data
+	mask = ~np.isnan(values_source)
+	x_source, y_source, values_source = x_source[mask], y_source[mask], values_source[mask]
 
-    # Build KDTree from source points
-    tree = cKDTree(np.c_[x_source, y_source])
+	# Build KDTree from source points
+	tree = cKDTree(np.c_[x_source, y_source])
 
-    # Query the k nearest neighbors for target points
-    dists, idxs = tree.query(np.c_[x_target, y_target], k=k)
+	# Query the k nearest neighbors for target points
+	dists, idxs = tree.query(np.c_[x_target, y_target], k=k)
 
-    # Avoid division by zero (if distance is very small, set to a small value)
-    dists = np.maximum(dists, 1e-10)
+	# Avoid division by zero (if distance is very small, set to a small value)
+	dists = np.maximum(dists, 1e-10)
 
-    # Compute IDW weights
-    weights = 1.0 / dists**power
-    weights /= weights.sum(axis=1, keepdims=True)  # Normalize weights
+	# Compute IDW weights
+	weights = 1.0 / dists**power
+	weights /= weights.sum(axis=1, keepdims=True)  # Normalize weights
 
-    # Compute weighted sum of values
-    interpolated_values = np.sum(weights * values_source[idxs], axis=1)
+	# Compute weighted sum of values
+	interpolated_values = np.sum(weights * values_source[idxs], axis=1)
 
-    return interpolated_values
+	return interpolated_values
 
 def idw_interpolation_uit(x_known, y_known, values_known, x_target, y_target, power=2, k=2):
-    """
-    Perform Inverse Distance Weighting interpolation.
-    
-    Parameters:
-    - x_known, y_known: Coordinates of known data points.
-    - values_known: Values at known data points.
-    - x_target, y_target: Coordinates of target points where interpolation is desired.
-    - power: Power parameter for IDW (default is 2).
-    
-    Returns:
-    - Interpolated values at target points.
-    """
-    # Create KDTree for known points
-    tree = cKDTree(np.c_[x_known, y_known])
-    
-    # Query the tree for nearest neighbors
-    distances, indices = tree.query(np.c_[x_target, y_target], k=k)
-    
-    # Calculate weights using inverse distance
-    weights = 1 / np.where(distances == 0, np.inf, distances**power)
-    
-    # Handle division by zero for weights
-    weights_sum = np.sum(weights, axis=1)
-    weights_sum[weights_sum == 0] = np.nan  # Avoid division by zero
-    
-    # Calculate interpolated values
-    interpolated_values = np.sum(weights * values_known[indices], axis=1) / weights_sum
-    return interpolated_values
+	"""
+	Perform Inverse Distance Weighting interpolation.
+	
+	Parameters:
+	- x_known, y_known: Coordinates of known data points.
+	- values_known: Values at known data points.
+	- x_target, y_target: Coordinates of target points where interpolation is desired.
+	- power: Power parameter for IDW (default is 2).
+	
+	Returns:
+	- Interpolated values at target points.
+	"""
+	# Create KDTree for known points
+	tree = cKDTree(np.c_[x_known, y_known])
+	
+	# Query the tree for nearest neighbors
+	distances, indices = tree.query(np.c_[x_target, y_target], k=k)
+	
+	# Calculate weights using inverse distance
+	weights = 1 / np.where(distances == 0, np.inf, distances**power)
+	
+	# Handle division by zero for weights
+	weights_sum = np.sum(weights, axis=1)
+	weights_sum[weights_sum == 0] = np.nan  # Avoid division by zero
+	
+	# Calculate interpolated values
+	interpolated_values = np.sum(weights * values_known[indices], axis=1) / weights_sum
+	return interpolated_values 
 
 interpolated_oib_sit = interpolating_to_cryo(np.array(x_oib), np.array(y_oib), np.array(oib_sit), x_cryo, y_cryo)
 interpolated_smos_sit = interpolating_to_cryo(x_smos, y_smos, smos_sit, x_cryo, y_cryo)
+print("Interpolated OiB SIT shape:", interpolated_oib_sit.shape)
 
-idw_interp_oib_sit = idw_interpolation_gpt(
-    np.array(x_oib), np.array(y_oib), np.array(oib_sit),
-    x_cryo.flatten(), y_cryo.flatten()
-)
+""" idw_interp_oib_sit = idw_interpolation_gpt(
+	np.array(x_oib), np.array(y_oib), np.array(oib_sit),
+	x_cryo.flatten(), y_cryo.flatten()
+) """
 
-idw_interp_smos_sit = idw_interpolation_gpt(
-    x_smos, y_smos, smos_sit[0,:,:],
-    x_cryo.flatten(), y_cryo.flatten()
-)
+""" idw_interp_smos_sit = idw_interpolation_gpt(
+	x_smos, y_smos, smos_sit[0,:,:],
+	x_cryo.flatten(), y_cryo.flatten()
+) """
 
-idw_interp_oib_sit_uit = idw_interpolation_uit(np.array(x_oib), np.array(y_oib), np.array(oib_sit), x_cryo.flatten(), y_cryo.flatten())
-idw_interp_smos_sit_uit = idw_interpolation_uit(x_smos.flatten(), y_smos.flatten(), smos_sit[0,:,:].flatten(), x_cryo.flatten(), y_cryo.flatten())
+""" idw_interp_oib_sit_uit = idw_interpolation_uit(np.array(x_oib), np.array(y_oib), np.array(oib_sit), x_cryo.flatten(), y_cryo.flatten())
+idw_interp_smos_sit_uit = idw_interpolation_uit(x_smos.flatten(), y_smos.flatten(), smos_sit[0,:,:].flatten(), x_cryo.flatten(), y_cryo.flatten()) """
+
+def mapping_xy(x_cryo, y_cryo, x_source, y_source):
+	# Check if x_cryo and y_cryo are 2D arrays and need to be flattened
+	if x_source.ndim == 2 and y_source.ndim == 2:
+		x_source = x_source.flatten()
+		y_source = y_source.flatten()
+	else: 
+		pass
+	
+	cryo_tree = cKDTree(np.column_stack((x_cryo.flatten(), y_cryo.flatten())))
+
+	mapped_source_coords = []
+ 
+	for x, y in zip(x_source, y_source):
+		dist, index = cryo_tree.query([x, y], k=1)
+		mapped_source_coords.append((x_cryo.flatten()[index], y_cryo.flatten()[index]))
+	
+	return np.array(mapped_source_coords) # Return list of (x, y) for valid points
+
+mapped_oib_coords = mapping_xy(x_cryo, y_cryo, np.array(x_oib), np.array(y_oib))
+mapped_smos_coords = mapping_xy(x_cryo, y_cryo, x_smos, y_smos)
+
+print("Mapped OIB coords shape: ", mapped_oib_coords.shape)
+print("Mapped SMOS coords shape: ", mapped_smos_coords.shape)
+
+x_oib_mapped = mapped_oib_coords[:, 0]
+y_oib_mapped = mapped_oib_coords[:, 1]
+
+print("Mapped OIB x shape: ", x_oib_mapped.shape)
+print("Mapped OIB y shape: ", y_oib_mapped.shape)
+
+x_smos_mapped = mapped_smos_coords[:, 0]
+y_smos_mapped = mapped_smos_coords[:, 1]
+
+print("Mapped SMOS x shape: ", x_smos_mapped.shape)
+print("Mapped SMOS y shape: ", y_smos_mapped.shape)
 
 # ----------------------- Interp Histograms ----------------------- #
 
@@ -323,41 +360,41 @@ def histogram(interp_oib, interp_smos, cryo_sit):
 	plt.show()
  
 def idw_histogram(interp_oib, interp_smos, cryo_sit):
-    interp_oib = interp_oib.flatten()
-    interp_smos = interp_smos.flatten()
-    cryo_sit = cryo_sit.flatten()
-    
-    # Create histogram
-    plt.hist(interp_oib, bins=100, alpha=0.5, color='green', label='OIB')
-    plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
-    plt.hist(interp_smos, bins=100, alpha=0.5, color='red', label='SMOS')
-    
-    # Labels and title
-    plt.xlabel("Sea Ice Thickness [m]")
-    plt.ylabel("Frequency")
-    plt.title("Histogram: Comparison of CryoSat-2 with IDW Interpolated OIB and SMOS")
-    plt.legend()
-    plt.grid(True, linestyle="--", alpha=0.5)
-    plt.show()
-    
+	interp_oib = interp_oib.flatten()
+	interp_smos = interp_smos.flatten()
+	cryo_sit = cryo_sit.flatten()
+	
+	# Create histogram
+	plt.hist(interp_oib, bins=100, alpha=0.5, color='green', label='OIB')
+	plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
+	plt.hist(interp_smos, bins=100, alpha=0.5, color='red', label='SMOS')
+	
+	# Labels and title
+	plt.xlabel("Sea Ice Thickness [m]")
+	plt.ylabel("Frequency")
+	plt.title("Histogram: Comparison of CryoSat-2 with IDW Interpolated OIB and SMOS")
+	plt.legend()
+	plt.grid(True, linestyle="--", alpha=0.5)
+	plt.show()
+	
 def idw_histogram_uit(interp_oib, interp_smos, cryo_sit):
-    interp_oib = interp_oib.flatten()
-    interp_smos = interp_smos.flatten()
-    cryo_sit = cryo_sit.flatten()
-    
-    # Create histogram
-    plt.hist(interp_oib, bins=100, alpha=0.5, color='green', label='OIB')
-    plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
-    plt.hist(interp_smos, bins=100, alpha=0.5, color='red', label='SMOS')
-    
-    # Labels and title
-    plt.xlabel("Sea Ice Thickness [m]")
-    plt.ylabel("Frequency")
-    plt.title("Histogram: Comparison of CryoSat-2 with IDW Interpolated OIB and SMOS")
-    plt.legend()
-    plt.grid(True, linestyle="--", alpha=0.5)
-    plt.show()
-    
+	interp_oib = interp_oib.flatten()
+	interp_smos = interp_smos.flatten()
+	cryo_sit = cryo_sit.flatten()
+	
+	# Create histogram
+	plt.hist(interp_oib, bins=100, alpha=0.5, color='green', label='OIB')
+	plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
+	plt.hist(interp_smos, bins=100, alpha=0.5, color='red', label='SMOS')
+	
+	# Labels and title
+	plt.xlabel("Sea Ice Thickness [m]")
+	plt.ylabel("Frequency")
+	plt.title("Histogram: Comparison of CryoSat-2 with IDW Interpolated OIB and SMOS")
+	plt.legend()
+	plt.grid(True, linestyle="--", alpha=0.5)
+	plt.show()
+	
 # ---------------------------------------------- # 
 """ 
 The following functions finds the Cryosat-2 data and smos data grid points that are below 1m, 
@@ -367,11 +404,105 @@ Than averages the OiB data points within the circle, and if the average is below
 """
 
  
+def filter_and_average_oib_cryo(cryo_x, cryo_y, cryo_sit, oib_x, oib_y, oib_sit, radius=12500):
+	"""
+	Filters CryoSat-2 and SMOS data for points below 1m SIT, finds OIB points within 25 km, 
+	and averages them if the mean is also below 1m.
+	
+	Parameters:
+		cryo_x, cryo_y: CryoSat-2 grid coordinates (meters, Polar Stereographic).
+		cryo_sit: CryoSat-2 sea ice thickness data.
+		smos_sit: SMOS sea ice thickness data.
+		oib_x, oib_y: OIB grid coordinates (meters, Polar Stereographic).
+		oib_sit: OIB sea ice thickness data.
+		radius: Search radius in meters (default: 25000m or 25km).
+	
+	Returns:
+		List of (x, y, avg_OIB_SIT) for valid points.
+	"""
+
+	# 1. Identify CryoSat-2 & SMOS points with SIT < 1m
+	mask = (cryo_sit < 1) 
+	cryo_filtered_x = cryo_x[mask]
+	cryo_filtered_y = cryo_y[mask]
+
+	# 2. Build a KDTree using OIB coordinates
+	oib_tree = cKDTree(np.column_stack((oib_x, oib_y)))
+	
+	results = []
+
+	# 3. Find OIB points within the radius for each CryoSat-2 point
+	for x, y in zip(cryo_filtered_x, cryo_filtered_y):
+		indices = oib_tree.query_ball_point([x, y], radius)
+
+		# 4. Ensure indices are within valid range
+		valid_indices = [i for i in indices if i < len(oib_sit)]
+		if valid_indices:
+			nearby_oib_sit = oib_sit[valid_indices]
+			avg_oib_sit = np.mean(nearby_oib_sit)
+
+			# 5. Store only if avg OIB SIT < 1m
+			if avg_oib_sit < 1:
+				results.append((x, y, avg_oib_sit))
+
+	return results # Return list of (x, y, avg_OIB_SIT) for valid points
+
+
+def filter_and_average_oib_smos(smos_x, smos_y, smos_sit, oib_x, oib_y, oib_sit, radius=12500):
+    """
+    Filters SMOS data for points below 1m SIT, finds OIB points within 25 km, 
+    and averages them if the mean OIB SIT is also below 1m.
+
+    Parameters:
+        smos_x, smos_y: SMOS grid coordinates (meters, Polar Stereographic).
+        smos_sit: SMOS sea ice thickness data.
+        oib_x, oib_y: OIB grid coordinates (meters, Polar Stereographic).
+        oib_sit: OIB sea ice thickness data.
+        radius: Search radius in meters (default: 12500m or 25km).
+
+    Returns:
+        List of (x, y, avg_OIB_SIT) for valid SMOS points.
+    """
+
+    # 1. Identify SMOS points with SIT < 1m
+    mask = (smos_sit < 1)
+    smos_filtered_x = smos_x[mask]
+    smos_filtered_y = smos_y[mask]
+
+    # 2. Build a KDTree using OIB coordinates
+    oib_tree = cKDTree(np.column_stack((oib_x, oib_y)))
+
+    results = []
+
+    # 3. Find OIB points within the radius for each SMOS point
+    for x, y in zip(smos_filtered_x, smos_filtered_y):
+        indices = oib_tree.query_ball_point([x, y], radius)
+
+        # 4. Extract valid OIB SIT values
+        valid_indices = [i for i in indices if i < len(oib_sit)]
+        if valid_indices:
+            nearby_oib_sit = oib_sit[valid_indices]
+            avg_oib_sit = np.mean(nearby_oib_sit)
+
+            # 5. Store only if avg OIB SIT < 1m
+            if avg_oib_sit < 1:
+                results.append((x, y, avg_oib_sit))
+
+    return results
+
+interpolated_oib_sit = interpolated_oib_sit.flatten()
+oib_cryo_filtered = filter_and_average_oib_cryo(x_cryo, y_cryo, cryo_sit, x_oib_mapped, y_oib_mapped, interpolated_oib_sit)
+oib_smos_filtered = filter_and_average_oib_smos(x_smos_mapped, y_smos_mapped, interpolated_smos_sit, x_oib_mapped, y_oib_mapped, interpolated_oib_sit)
+
+
+#print(filter_and_average_oib(x_cryo, y_cryo, cryo_sit, np.array(x_oib), np.array(y_oib), interpolated_oib_sit))
+ 
+ 
 #plot_cryo_oib(oib_lat, oib_lon, oib_sit, cryo_lat, cryo_lon, cryo_sit)
 #plot_smos_oib(oib_lat, oib_lon, oib_sit, smos_lat, smos_lon, smos_sit[0,:,:])
 
 #histogram(interpolated_oib_sit, interpolated_smos_sit, cryo_sit)
 #idw_histogram(idw_interp_oib_sit, idw_interp_smos_sit, cryo_sit)
-idw_histogram_uit(idw_interp_oib_sit_uit, idw_interp_smos_sit_uit, cryo_sit)
+#idw_histogram_uit(idw_interp_oib_sit_uit, idw_interp_smos_sit_uit, cryo_sit)
 
 #plot_data_oib(oib_lon, oib_lat, oib_sit)

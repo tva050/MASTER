@@ -10,12 +10,13 @@ from netCDF4 import Dataset
 
 folder_path_2013= r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013"
 
-#one_smos_file = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\SMOS_Icethickness_v3.3_north_20130321.nc"
+one_smos_file = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\SMOS_Icethickness_v3.3_north_20130321.nc"
 
 def print_nc_metadata(file_path):
     """Prints metadata from a NetCDF (.nc) file."""
     # Open the NetCDF file
     with Dataset(file_path, 'r') as nc_file:
+        print(nc_file.variables.keys())
         # Print global attributes
         print("Global Attributes:")
         for attr in nc_file.ncattrs():
@@ -35,30 +36,48 @@ def print_nc_metadata(file_path):
 def get_data(folder_path):
     # Initialize lists to store daily data
     si_tickness_data = []
+    sit_un_data = []
     lat, lon = None, None  # Placeholder for coordinates
     for filename in os.listdir(folder_path):
         if filename.endswith('.nc'):
             file_path = os.path.join(folder_path, filename)
             with nc.Dataset(file_path, "r") as dataset:
                 si_thickness = dataset.variables['sea_ice_thickness'][:]
-                land_mask = dataset.variables['land'][:]                
-                si_thickness = np.where(land_mask == 1, np.nan, si_thickness)
-        
+                
+                if 'land' in dataset.variables:
+                    land_mask = dataset.variables['land'][0, :, :]  # Extract first time step
+                else:
+                    print(f"Warning: 'land' variable not found in {filename}. Using default mask.")
+                    land_mask = np.zeros_like(si_thickness)  # Default to no land mask          
+                         
+                si_thickness = np.where(land_mask == 1, np.nan, si_thickness) 
+                
+                if 'ice_thickness_uncertainty' in dataset.variables:
+                    sit_un = dataset.variables['ice_thickness_uncertainty'][:]
+                else:
+                    print(f"Warning: 'ice_thickness_uncertainty' not found in {filename}. Using NaNs.")
+                    sit_un = np.full_like(si_thickness, np.nan)  # Fill with NaNs
+                    
                 # Filter out NaN, -999.0, and 0.0 values
-                mask = ~np.isnan(si_thickness) & (si_thickness != -999.0) & (si_thickness != 0.0)
-                si_thickness = np.where(mask, si_thickness, np.nan)
+                mask_sit = ~np.isnan(si_thickness) & (si_thickness != -999.0) & (si_thickness != 0.0)
+                mask_sit_un = ~np.isnan(sit_un) & (sit_un != -999.0) & (sit_un != 0.0)
+                
+                si_thickness = np.where(mask_sit, si_thickness, np.nan)
+                sit_un = np.where(mask_sit_un, sit_un, np.nan)
                 
                 # Store the thickness data
                 si_tickness_data.append(si_thickness)
-                
+                sit_un_data.append(sit_un)
                 # Get lat/lon from the first file
                 if lat is None or lon is None:
                     lat = dataset.variables['latitude'][:]
                     lon = dataset.variables['longitude'][:]
    
     si_thickness_data = np.array(si_tickness_data)
+    sit_un_data = np.array(sit_un_data)
     monthly_mean_thickness = np.mean(si_thickness_data, axis=0)
-    return lat, lon, monthly_mean_thickness
+    monthly_mean_thickness_un = np.mean(sit_un_data, axis=0)
+    return lat, lon, monthly_mean_thickness, monthly_mean_thickness_un
 
 
 def plot_data(lon, lat, si_thickness):
@@ -84,7 +103,7 @@ def plot_data(lon, lat, si_thickness):
     plt.show()
 
 
-def store_to_file(lon, lat, si_thickness, output_file):
+def store_to_file(lon, lat, si_thickness, si_thickness_unc, output_file):
     with nc.Dataset(output_file, "w", format="NETCDF4") as dataset:
         # Define dimensions
         dataset.createDimension("time", 1)  # Single time step
@@ -96,12 +115,14 @@ def store_to_file(lon, lat, si_thickness, output_file):
         lats = dataset.createVariable("latitude", "f4", ("lat", "lon"))
         lons = dataset.createVariable("longitude", "f4", ("lat", "lon"))
         sea_ice_thickness = dataset.createVariable("sea_ice_thickness", "f4", ("time", "lat", "lon"), fill_value=np.nan)
+        sea_ice_thickness_unc = dataset.createVariable("sea_ice_thickness_unc", "f4", ("time", "lat", "lon"), fill_value=np.nan)
         
         # Write data
         times[:] = [0]  # Arbitrary time value
         lats[:, :] = lat
         lons[:, :] = lon
         sea_ice_thickness[0, :, :] = si_thickness
+        sea_ice_thickness_unc[0, :, :] = si_thickness_unc
         
         # Metadata
         dataset.description = "Monthly mean sea ice thickness datset"
@@ -112,7 +133,9 @@ def store_to_file(lon, lat, si_thickness, output_file):
 
 if __name__ == "__main__":
     #print_nc_metadata(one_smos_file)
-    lat, lon, monthly_mean_thickness = get_data(folder_path_2013)
-    plot_data(lon, lat, monthly_mean_thickness)
+    lat, lon, monthly_mean_thickness, monthly_mean_thickness_unc = get_data(folder_path_2013)
+    # print number of nan values in monthly_mean_thickness_unc
+    print(np.sum(np.isnan(monthly_mean_thickness_unc)))
+    #plot_data(lon, lat, monthly_mean_thickness)
     #print(lon.shape, lat.shape, monthly_mean_thickness.shape)
-    store_to_file(lon, lat, monthly_mean_thickness, r'C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_mean_thickness.nc')
+    store_to_file(lon, lat, monthly_mean_thickness, monthly_mean_thickness_unc, r'C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_mean_thickness.nc')

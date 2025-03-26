@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from cartopy import crs as ccrs, feature as cfeature
 import netCDF4 as nc
 from scipy.interpolate import griddata
+from netCDF4 import Dataset
 
 oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2021\ubristol_cryosat2_seaicethickness_nh25km_2021_10_v1.nc"
 nov_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_11_v3.nc"
@@ -26,6 +27,26 @@ def get_data(path):
     filtered_si_thickness = np.where(mask, si_thickness, np.nan)
     return lat, lon, filtered_si_thickness
 
+def print_nc_metadata(file_path):
+    """Prints metadata from a NetCDF (.nc) file."""
+    # Open the NetCDF file
+    with Dataset(file_path, 'r') as nc_file:
+        # Print global attributes
+        print("Global Attributes:")
+        for attr in nc_file.ncattrs():
+            print(f"{attr}: {nc_file.getncattr(attr)}")
+        
+        print("\nVariables:")
+        for var_name, var in nc_file.variables.items():
+            print(f"{var_name}:")
+            print(f"  Dimensions: {var.dimensions}")
+            print(f"  Shape: {var.shape}")
+            print(f"  Data Type: {var.dtype}")
+            
+            # Print variable attributes
+            for attr in var.ncattrs():
+                print(f"  {attr}: {var.getncattr(attr)}")
+    
 
 def write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness):
     with open('filtered_data.txt', 'w') as f:
@@ -140,10 +161,11 @@ def box_plot():
 
 if __name__ == "__main__":
     lat, lon, si_thickness = get_data(oct_path)
+    print_nc_metadata(oct_path)
     #write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness)
     #single_figure(lat, lon, si_thickness)
     #single_figure(filtered_lat, filtered_lon, filtered_si_thickness)
     #zoomed_figure(filtered_lat, filtered_lon, filtered_si_thickness, filtered_si_thickness_uncertainty)
     #compare_months_LARM(oct_path, nov_path, dec_path)
     #bar()
-    box_plot()
+    #box_plot()
