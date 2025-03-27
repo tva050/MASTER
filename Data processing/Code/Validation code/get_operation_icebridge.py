@@ -5,38 +5,34 @@ from cartopy import crs as ccrs, feature as cfeature
 import netCDF4 as nc
 from  scipy.interpolate import griddata
 import pandas as pd
-from pyproj import Proj, Transformer
+from pyproj import Proj, Transformer, transform
+import cartopy.crs as ccrs
 import seaborn as sns
+from mpl_toolkits.basemap import Basemap
 
-#oib_paths = [
-#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110316.txt",
-#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110317.txt",
-#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110318.txt",
-#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110322.txt",
-#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110323.txt",
-#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110325.txt",
-#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110326.txt",
-#	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110328.txt"
-#]
 
-oib_paths = [
+import warnings
+warnings.filterwarnings("ignore", message="facecolor will have no effect*")
+
+oib_paths_2013 = [
 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130321.txt",
 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130322.txt",
 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130323.txt",
 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130324.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130425.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130326.txt"
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130326.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130327.txt"
 ]
+
+# 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130425.txt",
 
 smos_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_mean_thickness.nc"
 
 cryo_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2013\uit_cryosat2_L3_EASE2_nh25km_2013_03_v3.nc"
 
 
-# -------------------------- Data Processing -------------------------- #
+# ------------------------------ Data Extraction ------------------------------
 
-
-def get_data(path):
+def get_data_oib(path):
 	df = pd.read_csv(path, dtype=str, low_memory=False)  # Read as strings to avoid mixed types
 	df = df.apply(pd.to_numeric, errors='coerce')  # Convert all columns to numeric, forcing errors to NaN
 
@@ -44,12 +40,27 @@ def get_data(path):
 	lat = df["lat"].values
 	lon = df["lon"].values
 	thickness = df["thickness"].values
+	thickness_un = df["thickness_unc"].values
 
 	# Apply mask to remove invalid data
-	mask = (thickness != -99999.) & (thickness != 0.0)
+	mask = (thickness != -99999.0000) & (thickness_un != -99999.0000) 
 	thickness = np.where(mask, thickness, np.nan)
+	thickness_un = np.where(mask, thickness_un, np.nan)
 
-	return lat, lon, thickness
+	return lat, lon, thickness, thickness_un
+
+def extract_all_oib(oib_paths):
+	all_lat, all_lon, all_thickness, all_thickness_un = [], [], [], []
+	for path in oib_paths:
+		lat, lon, thickness, thickness_un = get_data_oib(path)
+
+
+		all_lat.extend(lat)
+		all_lon.extend(lon)
+		all_thickness.extend(thickness)
+		all_thickness_un.extend(thickness_un)
+	return all_lat, all_lon, all_thickness, all_thickness_un
+
 
 def get_smos(path):
 	data = nc.Dataset(path)
@@ -57,8 +68,13 @@ def get_smos(path):
 	lat = data.variables['latitude'][:]
 	lon = data.variables['longitude'][:]
 	si_thickness = data.variables['sea_ice_thickness'][:]
+	si_thickness_un = data.variables['sea_ice_thickness_unc'][:]
+ 
+	#mask = ~np.isnan(si_thickness_un)
+	#si_thickness_un = np.where(mask, si_thickness_un, np.nan)
+	
 	#print(si_thickness.shape)
-	return lat, lon, si_thickness
+	return lat, lon, si_thickness, si_thickness_un
 
 
 def get_cryo(path):
@@ -68,7 +84,7 @@ def get_cryo(path):
 	lat = data.variables['latitude'][:]
 	lon = data.variables['longitude'][:]
 	si_thickness = data.variables['sea_ice_thickness'][:]
-	#si_thickness_un = data.variables['Sea_Ice_Thickness_Uncertainty'][:]
+	si_thickness_un = data.variables['sea_ice_thickness_uncertainty'][:]
 	
 	# Check if lat and lon are 1D and need reshaping
 	if lat.ndim == 1 and lon.ndim == 1:
@@ -77,249 +93,167 @@ def get_cryo(path):
 	# Mask invalid data
 	mask = ~np.isnan(si_thickness)
 	filtered_si_thickness = np.where(mask, si_thickness, np.nan)
-	return lat, lon, filtered_si_thickness
+	return lat, lon, filtered_si_thickness, si_thickness_un
 
-def latlon_to_polar(lat, lon):
-	"""Convert lat/lon (degrees) to North Polar Stereographic (meters)."""
-	# Define WGS84 (lat/lon) and Polar Stereographic projection 
-	wgs84 = Proj(proj="latlong", datum="WGS84")
-	polar_stereo = Proj(proj="stere", lat_0=90, lon_0=-45, datum="WGS84", k=1, x_0=0, y_0=0)
 
-	# Create a Transformer object
-	transformer = Transformer.from_proj(wgs84, polar_stereo, always_xy=True)
 
-	# Convert coordinates
-	x, y = transformer.transform(lon, lat)
-	return x, y # x is longitude, y is latitude
+oib_lat, oib_lon, oib_sit, oib_sit_un = extract_all_oib(oib_paths_2013)
+oib_lat, oib_lon, oib_sit, oib_sit_un = np.array(oib_lat), np.array(oib_lon), np.array(oib_sit), np.array(oib_sit_un)
+smos_lat, smos_lon, smos_sit, smos_sit_un = get_smos(smos_path)
+cryo_lat, cryo_lon, cryo_sit, cryo_sit_un = get_cryo(cryo_path)
 
-def extract_all_oib(oib_paths):
-	all_x, all_y, all_thickness = [], [], []
-	for path in oib_paths:
-		lat, lon, thickness = get_data(path)
-		x, y = latlon_to_polar(lat, lon)
+print('OIB:', oib_lat.shape, oib_lon.shape, oib_sit.shape)
+print('SMOS:', smos_lat.shape, smos_lon.shape, smos_sit.shape)
+print('Cryo:', cryo_lat.shape, cryo_lon.shape, cryo_sit.shape)
 
-		all_x.extend(x)
-		all_y.extend(y)
-		all_thickness.extend(thickness)
-	return all_x, all_y, all_thickness 
+# ------------------------------ Data processing ------------------------------
 
-all_x, all_y, all_thickness = extract_all_oib(oib_paths)
-all_x, all_y, all_thickness = np.array(all_x), np.array(all_y), np.array(all_thickness)
+def reprojecting(lon, lat, proj=ccrs.NorthPolarStereo()):
+	transformer = proj.transform_points(ccrs.PlateCarree(), lon, lat)
+	x = transformer[..., 0]
+	y = transformer[..., 1]
+	return x, y
 
-smos_lat, smos_lon, smos_thickness = get_smos(smos_path)
-cryo_lat, cryo_lon, cryo_thickness = get_cryo(cryo_path)
+x_oib, y_oib = reprojecting(oib_lon, oib_lat)
+x_smos, y_smos = reprojecting(smos_lon, smos_lat)
+x_cryo, y_cryo = reprojecting(cryo_lon, cryo_lat)
 
-def pre_interpolation_data(lat, lon, sit):
-	x, y = latlon_to_polar(lat, lon)
-	x, y, sit = x.flatten(), y.flatten(), sit.flatten()
-	
-	mask = ~np.isnan(sit)
-	x, y, sit = x[mask], y[mask], sit[mask]
-	
-	return x, y, sit
+print('Reprojected OIB:', x_oib.shape, y_oib.shape)
+print('Reprojected SMOS:', x_smos.shape, y_smos.shape)
+print('Reprojected Cryo:', x_cryo.shape, y_cryo.shape)
 
-def interpolate_to_oib_grid(target_x, target_y, source_x, source_y, source_sit):
+def resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radius=12500):
 	""" 
-	Interpolates source data to target grid using linear interpolation.
-	This returns the interpolated sea ice thickness values, which can be compared to OIB data.
- 	"""
-	# convert source to polar stereographic
-	source_x, source_y, source_sit = pre_interpolation_data(source_x, source_y, source_sit)
-	
-	interp_sit = griddata((source_x, source_y), source_sit, (target_x, target_y), method='linear')  
-	return interp_sit
-
-smos_interp = interpolate_to_oib_grid(all_x, all_y, smos_lat, smos_lon, smos_thickness)
-cryo_interp = interpolate_to_oib_grid(all_x, all_y, cryo_lat, cryo_lon, cryo_thickness)
-
-
-# -------------------------- Data Visualization -------------------------- #
-
-def plot_oib(lat, lon, thickness):
-	# Create figure
-	fig, ax = plt.subplots(subplot_kw={'projection': ccrs.NorthPolarStereo()}, figsize=(10, 10))
-	
-	# Set map extent (meters, not degrees)
-	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
-
-	# Scatter plot with all data points
-	scatter = ax.scatter(all_x, all_y, c=all_thickness, cmap='viridis', vmin=0, vmax=1, zorder=1, transform=ccrs.NorthPolarStereo())
-
-	# Add map features
-	ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
-	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
-	ax.add_feature(cfeature.COASTLINE, color="gray", linewidth=0.5, zorder=4)
-
-	# Colorbar
-	cbar = plt.colorbar(scatter, orientation='vertical')
-	cbar.set_label('Sea Ice Thickness (m)')
-
-	plt.title('Sea Ice Thickness (Multiple Paths)')
-	plt.show()
-	 
-def smos_oib(all_x, all_y, all_thickness, smos_path):
-	smos_lat, smos_lon, smos_thickness = get_smos(smos_path)
-	
-	fig, ax = plt.subplots(subplot_kw={'projection': ccrs.NorthPolarStereo()}, figsize=(10, 10))
-	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
-	
-	scatter = ax.scatter(all_x, all_y, c=all_thickness, cmap='viridis', vmin=0, vmax=1, zorder=1, transform=ccrs.NorthPolarStereo())
-	mesh = ax.pcolormesh(smos_lon, smos_lat, smos_thickness[0, :, :], transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1, zorder=0)
-	
-	ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
-	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
-	ax.add_feature(cfeature.COASTLINE, color="gray", linewidth=0.5, zorder=4)
-	
-	cbar = plt.colorbar(scatter, orientation='vertical')
-	cbar.set_label('Sea Ice Thickness (m)')
-	
-	plt.title('Sea Ice Thickness (OIB and SMOS)')
-	plt.show()
-
-def cryo_oib(all_x, all_y, all_thickness, cryo_path):
-	cryo_lat, cryo_lon, cryo_thickness = get_cryo(cryo_path)
- 
-	fig, ax = plt.subplots(subplot_kw={'projection': ccrs.NorthPolarStereo()}, figsize=(10, 10))
-	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
- 
-	scatter = ax.scatter(all_x, all_y, c=all_thickness, cmap='viridis', vmin=0, vmax=1, zorder=1, transform=ccrs.NorthPolarStereo())
-	mesh = ax.pcolormesh(cryo_lon, cryo_lat, cryo_thickness, transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1, zorder=0)
- 
-	ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
-	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
-	ax.add_feature(cfeature.COASTLINE, color="gray", linewidth=0.5, zorder=4)
- 
-	cbar = plt.colorbar(scatter, orientation='vertical')
-	cbar.set_label('Sea Ice Thickness (m)')
-	
-	plt.title('Sea Ice Thickness (OIB and CryoSat-2)')
-	plt.show()
-
-def map_plot_used_data(all_x, all_y, all_thickness, smos_lat, smos_lon, smos_thickness):
-	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
-	
-	# Flatten and filter OIB data
-	oib_x_flat = all_x.flatten()
-	oib_y_flat = all_y.flatten()
-	oib_thickness_flat = all_thickness.flatten()
-	
-	valid_oib_mask = ~np.isnan(oib_thickness_flat)
-	oib_x_flat, oib_y_flat, oib_thickness_flat = oib_x_flat[valid_oib_mask], oib_y_flat[valid_oib_mask], oib_thickness_flat[valid_oib_mask]
-	
-	# Flatten and filter CryoSat-2 data
-	smos_x, smos_y, smos_thickness_flat = pre_interpolation_data(smos_lat, smos_lon, smos_thickness)
-	
-	valid_smos_mask = ~np.isnan(smos_thickness_flat)
-	smos_x, smos_y, smos_thickness_flat = smos_x[valid_smos_mask], smos_y[valid_smos_mask], smos_thickness_flat[valid_smos_mask]
-	
-	# Create the map plot
-	fig, ax = plt.subplots(subplot_kw={'projection': ccrs.NorthPolarStereo()}, figsize=(10, 10))
-	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
-
-	# Plot OIB data points (scatter plot)
-	scatter_oib = ax.scatter(oib_x_flat, oib_y_flat, c=oib_thickness_flat, cmap='viridis', vmin=0, vmax=1, s=10, alpha=0.7, transform=ccrs.NorthPolarStereo(), label="OIB Data", zorder=1)
-
-	# Plot CryoSat-2 data points (scatter plot)
-	scatter_cryo = ax.scatter(smos_x, smos_y, c=smos_thickness_flat, cmap='coolwarm', vmin=0, vmax=1, s=10, alpha=0.7, transform=ccrs.NorthPolarStereo(), label="smos Data", zorder=0)
-
-	# Add map features
-	ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
-	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
-	ax.add_feature(cfeature.COASTLINE, color="gray", linewidth=0.5, zorder=4)
-
-	# Add colorbar
-	cbar = plt.colorbar(scatter_oib, ax=ax, orientation='vertical', shrink=0.7)
-	cbar.set_label('OIB Sea Ice Thickness (m)')
-
-	# Add title and legend
-	plt.legend(loc='upper right')
-	plt.title('Data Points Used: OIB vs CryoSat-2')
-
-	# Show the plot
-	plt.show()
-	
-	
-def plot_interpolated_data(oib_x, oib_y, oib_thickness, interp_x, interp_y, interp_thickness, title="Interpolated Data vs OIB"):
-	""" 
-	Plots the interpolated thickness data on a polar stereographic map along with OIB thickness data for comparison.
+	Resample source data onto a new grid using weighted average based on uncertainty.
+	If no valid data, leave as NaN.
+	If no points are found in the radius, set to NaN.
 	"""
-	fig, ax = plt.subplots(1, 2, figsize=(14, 6), subplot_kw={'projection': ccrs.NorthPolarStereo()})
+	target_tree = cKDTree(np.column_stack([x_target.ravel(), y_target.ravel()]))  # Tree for faster lookup
 
-	# Plot OIB Thickness
-	sc1 = ax[0].scatter(oib_x, oib_y, c=oib_thickness, cmap='coolwarm', marker='o', s=10, transform=ccrs.PlateCarree())
-	ax[0].set_title("OIB Sea Ice Thickness")
-	ax[0].coastlines()
-	ax[0].gridlines(draw_labels=True)
-	cbar1 = plt.colorbar(sc1, ax=ax[0], orientation='vertical', shrink=0.7)
-	cbar1.set_label("Sea Ice Thickness (m)")
+	# Initialize arrays to store resampled data and weight sums
+	resampled_sit = np.full(x_target.shape, np.nan)
+	weights_sum = np.zeros(x_target.shape)
 
-	# Plot Interpolated Thickness
-	sc2 = ax[1].scatter(interp_x, interp_y, c=interp_thickness, cmap='coolwarm', marker='o', s=10, transform=ccrs.PlateCarree())
-	ax[1].set_title(title)
-	ax[1].coastlines()
-	ax[1].gridlines(draw_labels=True)
-	cbar2 = plt.colorbar(sc2, ax=ax[1], orientation='vertical', shrink=0.7)
-	cbar2.set_label("Sea Ice Thickness (m)")
+	# Flatten all arrays for iteration
+	source_sit = source_sit.ravel()
+	source_sit_un = source_sit_un.ravel()
+	x_source = x_source.ravel()
+	y_source = y_source.ravel()
 
-	plt.show()
-	
-def hist_cryo_smos_oib_SIT(cryo_sit, smos_sit, oib_sit):
-	""" 
-	Creates a histogram to compare CryoSat-2 thickness before and after interpolation.
-	"""
-	# Flatten and filter CryoSat-2 data
+	for i in range(len(source_sit)):
+		if np.isnan(source_sit[i]) or np.isnan(source_sit_un[i]):
+			continue  # Skip invalid data points
+		
+		indices = target_tree.query_ball_point([x_source[i], y_source[i]], radius)
+
+		if not indices:
+			continue  # If no neighbors are found, skip
+
+		weight = 1 / source_sit_un[i] if source_sit_un[i] != 0 else 0  # Avoid division by zero
+
+		for idx in indices:
+			if idx >= x_target.size:  # Ensure valid index
+				continue
+			
+			row, col = np.unravel_index(idx, x_target.shape)
+
+			# Avoid operations on uninitialized values
+			if np.isnan(resampled_sit[row, col]):
+				resampled_sit[row, col] = 0
+
+			# Weighted sum calculation
+			resampled_sit[row, col] = (resampled_sit[row, col] * weights_sum[row, col] + source_sit[i] * weight) / (weights_sum[row, col] + weight)
+			weights_sum[row, col] += weight
+
+	# Mask invalid values (no data points found)
+	resampled_sit[weights_sum == 0] = np.nan
+
+	return np.ma.masked_invalid(resampled_sit)
+
+
+resampled_oib_sit = resample_to_cryo_grid(x_oib, y_oib, oib_sit, oib_sit_un, x_cryo, y_cryo)
+resampled_smos_sit = resample_to_cryo_grid(x_smos, y_smos, smos_sit, smos_sit_un, x_cryo, y_cryo)
+print('Resampled OIB:', resampled_oib_sit.shape)
+print('Resampled SMOS:', resampled_smos_sit.shape)
+
+
+def hist_cryo_smos_oib(cryo_sit, oib_sit, smos_sit):
 	cryo_sit = cryo_sit.flatten()
+	oib_sit = oib_sit.flatten()
 	smos_sit = smos_sit.flatten()
-
- 
 	
 	# Create histogram
-	plt.figure(figsize=(8, 6))
-	plt.hist(oib_sit, bins=100, alpha=0.5, color='green', label='OIB Thickness')
-	plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
-	plt.hist(smos_sit, bins=100, alpha=0.5, color='red', label='SMOS')
+	plt.hist(oib_sit, bins=100, alpha=0.5, color='green', label='OIB', density=True)
+	plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='OiB', density=True)
+	plt.hist(smos_sit, bins=100, alpha=0.5, color='red', label='SMOS', density=True)
 	
 	# Labels and title
 	plt.xlabel("Sea Ice Thickness [m]")
-	plt.ylabel("Frequency")
-	plt.title("Histogram: Comparison of CryoSat-2 and SMOS Thickness with OIB")
-	plt.legend()
-	plt.grid(True, linestyle="--", alpha=0.5)
-	plt.show()
- 
-def hist_before_after_interp(before_interp, after_interp, oib_thickness):
-	""" 
-	Creates a histogram to compare CryoSat-2 thickness before and after interpolation.
-	"""
-	before_interp = before_interp.flatten()
-	after_interp = after_interp.flatten()
- 
-	# Create histogram
-	plt.figure(figsize=(8, 6))
-	plt.hist(oib_thickness, bins=100, alpha=0.5, color='green', label='OIB Thickness')
-	plt.hist(before_interp, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
-	plt.hist(after_interp, bins=100, alpha=0.5, color='red', label='SMOS')
- 
-	# Labels and title
-	plt.xlabel("Sea Ice Thickness (m)")
-	plt.ylabel("Frequency")
-	plt.title("Histogram: CS and SMOS Thickness Before and After Interpolation")
+	plt.ylabel("PDF")
+	plt.title("Histogram: After Resampling")
 	plt.legend()
 	plt.grid(True, linestyle="--", alpha=0.5)
 	plt.show()
 
-# -------------------------- Data Analysis -------------------------- #
 
-def pair_scatter_plot(all_thickness, smos_interp, bins=100):
+def plot_gridded_data(x_cryo, y_cryo, gridded_oib_sit):
+	fig = plt.figure(figsize=(10, 10))
+	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
+	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
+
+	# Plot the gridded data
+	scatter = ax.pcolormesh(x_cryo, y_cryo, gridded_oib_sit, transform=ccrs.PlateCarree(), cmap='viridis', shading='auto', vmin=0, vmax=3.5)
+	#scatter = ax.scatter(x_cryo, y_cryo, c=gridded_oib_sit, transform=ccrs.PlateCarree(), cmap='coolwarm', s=1)
+
+	# Add features
+	ax.coastlines()
+	ax.add_feature(cfeature.LAND, facecolor="lightgray")
+	ax.add_feature(cfeature.BORDERS, linestyle=":")
+
+	# Title and color bar
+	ax.set_title("Gridded Mean OiB Sea Ice Thickness")
+	plt.colorbar(scatter, label="Sea Ice Thickness (m)")
+	plt.show()
+	
+def plot_cryo_oib(oib_lat, oib_lon, oib_sit, cs_lat, cs_lon, cs_sit, title):
+	# Convert lon and lat to NumPy arrays if they are lists
+	oib_lon = np.array(oib_lon)
+	oib_lat = np.array(oib_lat)
+
+	# Create a figure and an axis with a polar projection
+	fig = plt.figure(figsize=(10, 10))
+	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
+	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
+
+	# Plot the sea ice thickness using scatter (for irregular grid)
+	sc = ax.scatter(oib_lon, oib_lat, c=oib_sit, cmap='viridis', vmin=0, vmax=1, transform=ccrs.PlateCarree(), zorder=1)
+	mesh = ax.pcolormesh(cs_lon, cs_lat, cs_sit, transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1, zorder=0)
+	
+	ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
+	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
+	ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5, zorder=4)
+	
+	# Add a colorbar
+	cbar = plt.colorbar(sc, orientation='vertical')
+	cbar.set_label('Sea Ice Thickness [m]')
+	
+	plt.title(title)
+	plt.show()
+
+
+# ------------------------------ Data visualization ------------------------------
+
+
+def pair_scatter_plot(oib_sit, smos_sit, bins=100):
 	""" 
 	Creates a scatter plot comparing OIB and CryoSat-2 thickness.
 	Points are plotted in order of density (densest on top).
 	"""
 	
 	# Remove NaN values
-	valid_mask = ~np.isnan(all_thickness) & ~np.isnan(smos_interp)
-	x = all_thickness[valid_mask]
-	y = smos_interp[valid_mask]
+	valid_mask = ~np.isnan(oib_sit) & ~np.isnan(smos_sit)
+	x = oib_sit[valid_mask]
+	y = smos_sit[valid_mask]
 
 	# Create 2D histogram to count data density
 	hist, xedges, yedges = np.histogram2d(x, y, bins=bins)
@@ -353,50 +287,45 @@ def pair_scatter_plot(all_thickness, smos_interp, bins=100):
 	plt.title("Pair Scatter Plot: OIB vs SMOS Thickness (Density Colored)")
 	plt.grid(True, linestyle="--", alpha=0.5)
 	plt.show()
-	
+
+def scatter_oib_cryo_pair(x_cryo, y_cryo, cryo_sit, oib_sit):
+    """
+    Creates a pair scatter plot with OIB SIT on the x-axis and CryoSat-2 SIT on the y-axis
+    for CryoSat-2 grid points where CryoSat-2 thickness is between 0 and 1 meter.
+    
+    Parameters:
+    - x_cryo, y_cryo: CryoSat-2 projected x, y grid coordinates.
+    - cryo_sit: CryoSat-2 SIT values.
+    - oib_sit: OIB SIT values, already resampled to the CryoSat-2 grid.
+    """
+    # Step 1: Find CryoSat-2 points where thickness is between 0 and 1 meter
+    mask_cryo = (cryo_sit >= 0) & (cryo_sit <= 1) & ~np.isnan(cryo_sit)
+    
+    # Step 2: Extract corresponding CryoSat-2 coordinates and thickness values
+    cryo_x_filtered = x_cryo[mask_cryo]
+    cryo_y_filtered = y_cryo[mask_cryo]
+    cryo_sit_filtered = cryo_sit[mask_cryo]
+    
+    # Step 3: Extract corresponding OIB thickness values at the filtered CryoSat-2 coordinates
+    oib_sit_filtered = oib_sit[mask_cryo]
+    
+    # Step 4: Plot the pair scatter plot
+    plt.figure(figsize=(8, 6))
+    plt.scatter(oib_sit_filtered, cryo_sit_filtered, alpha=0.5, c='b', edgecolors='k')
+    plt.xlabel("OIB Sea Ice Thickness [m]")
+    plt.ylabel("CryoSat-2 Sea Ice Thickness [m]")
+    plt.title("OIB vs CryoSat-2 Thickness (0 to 1m range)")
+    plt.grid(True)
+    plt.show()
 
 
-def barplot(cryo_interp, smos_interp, all_thickness):
-	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
-	#bin_centers = (bins[:-1] + bins[1:]) / 2  # Midpoints for plotting
-	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
- 
-	valied_mask = ~np.isnan(all_thickness) & ~np.isnan(cryo_interp) & ~np.isnan(smos_interp)
-	all_thickness, cryo_interp, smos_interp = all_thickness[valied_mask], cryo_interp[valied_mask], smos_interp[valied_mask]
-	
-	mean_cryo = []
-	mean_smos = []
-	
-	for i in range(len(bins)-1):
-		mask = (all_thickness >= bins[i]) & (all_thickness < bins[i+1])
-		mean_cryo.append(np.nanmean(cryo_interp[mask]))
-		mean_smos.append(np.nanmean(smos_interp[mask]))
-  
-	bar_width = 0.35
-	x = np.arange(len(bin_labels))
- 
-	plt.figure()
-	plt.bar(x - bar_width/2, mean_smos, width=bar_width, label='SMOS', color='blue')
-	plt.bar(x + bar_width/2, mean_cryo, width=bar_width, label='CryoSat-2', color='green')
-	
-	plt.xlabel("OIB Sea Ice Thickness Bins [m]")
-	plt.ylabel("Mean Sea Ice Thickness [m]")
-	plt.title("Mean Sea Ice Thickness by OIB Bins")
-	plt.xticks(x, bin_labels)
-	plt.xlim(-0.5, len(bin_labels) - 0.5)
-	plt.legend()
-	plt.grid(axis='y', linestyle='--', alpha=0.5)
-	# Show plot
-	plt.tight_layout()
-	plt.show()
- 
-def boxplot(cryo_interp, smos_interp, all_thickness):
+def boxplot(cryo_sit, smos_sit, oib_sit):
 	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
 	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
 
-	oib_flatten = all_thickness.flatten()
-	cryo_flatten = cryo_interp.flatten()	
-	smos_flatten = smos_interp.flatten()
+	oib_flatten = oib_sit.flatten()
+	cryo_flatten = cryo_sit.flatten()	
+	smos_flatten = smos_sit.flatten()
  
 	valid_mask = ~np.isnan(oib_flatten) & ~np.isnan(cryo_flatten) & ~np.isnan(smos_flatten)
 	oib_flatten, cryo_flatten, smos_flatten = oib_flatten[valid_mask], cryo_flatten[valid_mask], smos_flatten[valid_mask]
@@ -432,14 +361,48 @@ def boxplot(cryo_interp, smos_interp, all_thickness):
 
 	plt.tight_layout()
 	plt.show()
+
+def barplot(cryo_sit, smos_sit, oib_sit):
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	#bin_centers = (bins[:-1] + bins[1:]) / 2  # Midpoints for plotting
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
  
-def heatmap(cryo_interp, smos_interp, oib_sit):
+	valied_mask = ~np.isnan(oib_sit) & ~np.isnan(cryo_sit) & ~np.isnan(smos_sit)
+	oib_sit, cryo_sit, smos_sit = oib_sit[valied_mask], cryo_sit[valied_mask], smos_sit[valied_mask]
+	
+	mean_cryo = []
+	mean_smos = []
+	
+	for i in range(len(bins)-1):
+		mask = (oib_sit >= bins[i]) & (oib_sit < bins[i+1])
+		mean_cryo.append(np.nanmean(cryo_sit[mask]))
+		mean_smos.append(np.nanmean(smos_sit[mask]))
+  
+	bar_width = 0.35
+	x = np.arange(len(bin_labels))
+ 
+	plt.figure()
+	plt.bar(x - bar_width/2, mean_smos, width=bar_width, label='SMOS', color='blue')
+	plt.bar(x + bar_width/2, mean_cryo, width=bar_width, label='CryoSat-2', color='green')
+	
+	plt.xlabel("OIB Sea Ice Thickness Bins [m]")
+	plt.ylabel("Mean Sea Ice Thickness [m]")
+	plt.title("Mean Sea Ice Thickness by OIB Bins")
+	plt.xticks(x, bin_labels)
+	plt.xlim(-0.5, len(bin_labels) - 0.5)
+	plt.legend()
+	plt.grid(axis='y', linestyle='--', alpha=0.5)
+	# Show plot
+	plt.tight_layout()
+	plt.show()
+ 
+def heatmap(cryo_sit, smos_sit, oib_sit):
 	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
 	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
 	satellite_products = ["CryoSat-2", "SMOS"]
 	
-	cryo_flat = cryo_interp.flatten()
-	smos_flat = smos_interp.flatten()
+	cryo_flat = cryo_sit.flatten()
+	smos_flat = smos_sit.flatten()
 	oib_flat = oib_sit.flatten()
 	
 	valid_mask = ~np.isnan(oib_flat) & ~np.isnan(cryo_flat) & ~np.isnan(smos_flat)
@@ -459,14 +422,14 @@ def heatmap(cryo_interp, smos_interp, oib_sit):
 	plt.title("Mean Difference from OIB Thickness")
 	plt.show()
  
-def differences(cryo_interp, smos_interp, oib_sit):
+def differences(cryo_sit, smos_sit, oib_sit):
 	# Define bins and labels
 	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
 	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
  
 	# Flatten data
-	cryo_flat = cryo_interp.flatten()
-	smos_flat = smos_interp.flatten()
+	cryo_flat = cryo_sit.flatten()
+	smos_flat = smos_sit.flatten()
 	oib_flat = oib_sit.flatten()
  
 	valid_mask = ~np.isnan(oib_flat) & ~np.isnan(cryo_flat) & ~np.isnan(smos_flat)
@@ -513,20 +476,15 @@ def differences(cryo_interp, smos_interp, oib_sit):
 	print(f"Total RMSE: {np.round(np.nanmean(rmse_smos), 3)}")
 	print("\n-------------------------------------------------")
 	print("[0-0.2, 0.2-0.4, 0.4-0.6, 0.6-0.8, 0.8-1]")
-		   
  
-if __name__ == '__main__':
-	""" Data Visualization """
-	#plot_oib(all_x, all_y, all_thickness)
-	smos_oib(all_x, all_y, all_thickness, smos_path)
-	#cryo_oib(all_x, all_y, all_thickness, cryo_path)	
-	#map_plot_used_data(all_x, all_y, all_thickness, cryo_lat, cryo_lon, cryo_thickness)
-	#plot_interpolated_data(all_x, all_y, all_thickness, all_x, all_y, cryo_interp, title="CryoSat-2 Interpolated vs OIB")
-	#hist_cryo_smos_oib_SIT(cryo_thickness, smos_thickness[0, :, :], all_thickness)
-	#hist_before_after_interp(cryo_interp, smos_interp, all_thickness)
-	""" Data Analysis """
-	#pair_scatter_plot(all_thickness, smos_interp)
-	#barplot(cryo_interp, smos_interp, all_thickness)
-	#boxplot(cryo_interp, smos_interp, all_thickness)
-	#heatmap(cryo_interp, smos_interp, all_thickness)
-	#differences(cryo_interp, smos_interp, all_thickness)
+
+if __name__ == "__main__":
+    #plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, cryo_sit, 'CryoSat-2 vs OiB')
+	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, resampled_smos_sit, 'SMOS vs OiB') 
+	#pair_scatter_plot(resampled_oib_sit, cryo_sit)
+	#scatter_oib_cryo_pair(x_cryo, y_cryo, cryo_sit, resampled_oib_sit)
+	#hist_cryo_smos_oib(cryo_sit, resampled_oib_sit, resampled_smos_sit)
+	#boxplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+	#barplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+	#heatmap(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+	#differences(cryo_sit, resampled_smos_sit, resampled_oib_sit)
