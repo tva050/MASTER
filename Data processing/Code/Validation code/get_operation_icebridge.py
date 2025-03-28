@@ -485,6 +485,7 @@ if __name__ == "__main__":
 	#scatter_oib_cryo_pair(x_cryo, y_cryo, cryo_sit, resampled_oib_sit)
 	#hist_cryo_smos_oib(cryo_sit, resampled_oib_sit, resampled_smos_sit)
 	#boxplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
-	#barplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
-	#heatmap(cryo_sit, resampled_smos_sit, resampled_oib_sit)
-	#differences(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+	barplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+	heatmap(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+	differences(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+ 

@@ -10,3 +10,14 @@ import cartopy.crs as ccrs
 import seaborn as sns
 from mpl_toolkits.basemap import Basemap
 
+
+
+mooring_a2122 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\BGEP moorings\2021-2022\uls21a_draft.dat"
+mooring_b2122 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\BGEP moorings\2021-2022\uls21b_draft.dat"
+mooring_d2122 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\BGEP moorings\2021-2022\uls21d_draft.dat"
+
+def get_mooring_data(path):
+    """ 
+    
+    """
+    
