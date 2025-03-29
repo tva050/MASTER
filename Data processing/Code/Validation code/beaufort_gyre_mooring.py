@@ -116,12 +116,7 @@ def mooring_data(mooring_path):
     dates_A, dates_B, dates_D = [], [], []
     
     for file in mooring_files_A:
-        with h5.File(file, 'r') as data:
-            ids_A.append(data["IDS"][()])
-            dates_A.append(data["dates"][()])
         
-    print("ids_A", ids_A)
-    print("dates_A", dates_A)
 
 
 mooring_data(mooring_path)
