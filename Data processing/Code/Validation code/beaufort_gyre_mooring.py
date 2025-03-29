@@ -33,7 +33,7 @@ Plan
  - Plot time series
     - Ranging from 0.9 - 1m draft 
     
-note:
+Note:
 Variables in the .mat file: ['BETA', 'ID', 'IDS', 'WLS', 'TILTS', 'OWBETA', 'BTBETA', 'WL', 'T', 'yday', 'dates', 'name']
 """
 
