@@ -256,7 +256,7 @@ warning('off','all')
 
 % Upsample sat data to daily with spline interpolation (to retain SID
 % oscillations from coarser time series)
-sat_A_up = interp1(datenum(tvec_sit),sat_A(:,1),datenum(t_full_A),'spline',NaN);
+sat_A_up = interp1(datenum(tv   ec_sit),sat_A(:,1),datenum(t_full_A),'spline',NaN);
 sat_B_up = interp1(datenum(tvec_sit),sat_B(:,1),datenum(t_full_B),'spline',NaN);
 sat_D_up = interp1(datenum(tvec_sit),sat_D(:,1),datenum(t_full_D),'spline',NaN);
 
