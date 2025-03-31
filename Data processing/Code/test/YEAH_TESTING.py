@@ -109,13 +109,8 @@ def single_file(path):
 	print(file.keys())
 	ids = file["IDS"]
 	dates = file["dates"]
-	print(dates)
-	print(ids)
-def process_single_file_h5(path):
-	file = h5py.File(path, "r")
-	print(file.keys())
-	dates = file["dates"][:]
-	
+	ids_a = ids[:, :6]
+
  
 def extraction(path):
 	mooring_files_A = glob.glob(os.path.join(path, "*a_*.mat"))
@@ -127,15 +122,8 @@ def extraction(path):
 	stats_A, stats_B, stats_D = [], [], []
 	
 	for files in mooring_files_A:
-		data = h5py.File(files, "r")
+		data = loadmat(files)
 
-		ids = data["IDS"]
-		dates = data["dates"]
-		ids_A.append(ids)
-		dates_A.append(dates)
-  
-	print(f"IDS_A shape: {ids_A}")
-  
 
 
 #easy_extract(path)

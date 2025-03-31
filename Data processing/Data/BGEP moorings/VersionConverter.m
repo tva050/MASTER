@@ -38,15 +38,20 @@ function processMatFiles(dataFolder)
 end
 
 % Comment out, if you not want to convert det datasets again
-processMatFiles("/MATLAB Drive/testing/data")
+%processMatFiles("/MATLAB Drive/testing/data")
 
 
 % Check of new mat file
-
-vars = whos('-file', '/MATLAB Drive/testing/data/Vuls16a_dailyn.mat');
+vars = whos('-file', '/MATLAB Drive/testing/data/Vuls21a_dailyn.mat');
 disp({vars.name}); 
-data = load("Vuls12a_dailyn.mat");
+data = load("/MATLAB Drive/testing/data/Vuls21a_dailyn.mat");
 disp(data.dates);
 disp(data.IDS);
+
+
+% Display the shape of the variable
+variableShape = size(data.IDS);
+disp(['Shape of myVariable: ', num2str(variableShape)]);
+
 
 

@@ -11,7 +11,7 @@ oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processi
 nov_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_11_v3.nc"
 dec_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_12_v3.nc"
 
-
+cpom = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM\thk_2021_11.map.nc"
 def get_data(path):
     data = nc.Dataset(path)
     #print(data.variables.keys())
@@ -160,8 +160,8 @@ def box_plot():
     plt.show()
 
 if __name__ == "__main__":
-    lat, lon, si_thickness = get_data(oct_path)
-    print_nc_metadata(oct_path)
+    #lat, lon, si_thickness = get_data(oct_path)
+    print_nc_metadata(cpom)
     #write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness)
     #single_figure(lat, lon, si_thickness)
     #single_figure(filtered_lat, filtered_lon, filtered_si_thickness)
