@@ -23,6 +23,31 @@ oib_paths_2013 = [
 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130327.txt"
 ]
 
+oib_paths_2012 = [
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120314.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120315.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120316.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120317.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120319.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120322.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120323.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120326.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120327.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120328.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2012\IDCSI4_20120329.txt",
+]
+
+oib_paths_2011 = [
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110316.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110317.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110318.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110322.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110323.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110325.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110326.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110328.txt"
+]
+
 smos_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_mean_thickness.nc"
 
 cryo_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product\uit_cryosat2_L3_EASE2_nh25km_2013_03_v3.nc"
@@ -193,6 +218,29 @@ def hist_cryo_smos_oib(cryo_sit, oib_sit, smos_sit):
 	plt.grid(True, linestyle="--", alpha=0.5)
 	plt.show()
 
+def plot_fligth_paths(cryo_x, cryo_y, oib_2011, oib_2012, oib_2013):
+	oib_2011_lat, oib_2011_lon, oib_2011_sit, oib_2011_sit_un = extract_all_oib(oib_2011)
+	oib_2012_lat, oib_2012_lon, oib_2012_sit, oib_2012_sit_un = extract_all_oib(oib_2012)
+	oib_2013_lat, oib_2013_lon, oib_2013_sit, oib_2013_sit_un = extract_all_oib(oib_2013)
+ 
+	plt.figure(figsize=(10, 10))
+	m = Basemap(projection='npstere', resolution='i', lat_0=90, lon_0=0, boundinglat=60, width=6e6, height=6e6)
+	m.drawcoastlines()
+	m.drawcountries()
+	m.bluemarble()
+
+	x_11, y_11 = m(oib_2011_lon, oib_2011_lat)
+	x_12, y_12 = m(oib_2012_lon, oib_2012_lat)
+	x_13, y_13 = m(oib_2013_lon, oib_2013_lat)
+ 
+	m.scatter(x_11, y_11, c='orange', s=1, label='OIB 2011')
+	m.scatter(x_12, y_12, c='cyan', s=1, label='OIB 2012')
+	m.scatter(x_13, y_13, c='magenta', s=1, label='OIB 2013')
+ 
+	plt.title("OIB Flight Paths")
+	plt.legend(markerscale = 5)
+	plt.show()
+	
 
 def plot_gridded_data(x_cryo, y_cryo, gridded_oib_sit):
 	fig = plt.figure(figsize=(10, 10))
@@ -287,34 +335,34 @@ def pair_scatter_plot(oib_sit, smos_sit, bins=100):
 	plt.show()
 
 def scatter_oib_cryo_pair(x_cryo, y_cryo, cryo_sit, oib_sit):
-    """
-    Creates a pair scatter plot with OIB SIT on the x-axis and CryoSat-2 SIT on the y-axis
-    for CryoSat-2 grid points where CryoSat-2 thickness is between 0 and 1 meter.
-    
-    Parameters:
-    - x_cryo, y_cryo: CryoSat-2 projected x, y grid coordinates.
-    - cryo_sit: CryoSat-2 SIT values.
-    - oib_sit: OIB SIT values, already resampled to the CryoSat-2 grid.
-    """
-    # Step 1: Find CryoSat-2 points where thickness is between 0 and 1 meter
-    mask_cryo = (cryo_sit >= 0) & (cryo_sit <= 1) & ~np.isnan(cryo_sit)
-    
-    # Step 2: Extract corresponding CryoSat-2 coordinates and thickness values
-    cryo_x_filtered = x_cryo[mask_cryo]
-    cryo_y_filtered = y_cryo[mask_cryo]
-    cryo_sit_filtered = cryo_sit[mask_cryo]
-    
-    # Step 3: Extract corresponding OIB thickness values at the filtered CryoSat-2 coordinates
-    oib_sit_filtered = oib_sit[mask_cryo]
-    
-    # Step 4: Plot the pair scatter plot
-    plt.figure(figsize=(8, 6))
-    plt.scatter(oib_sit_filtered, cryo_sit_filtered, alpha=0.5, c='b', edgecolors='k')
-    plt.xlabel("OIB Sea Ice Thickness [m]")
-    plt.ylabel("CryoSat-2 Sea Ice Thickness [m]")
-    plt.title("OIB vs CryoSat-2 Thickness (0 to 1m range)")
-    plt.grid(True)
-    plt.show()
+	"""
+	Creates a pair scatter plot with OIB SIT on the x-axis and CryoSat-2 SIT on the y-axis
+	for CryoSat-2 grid points where CryoSat-2 thickness is between 0 and 1 meter.
+	
+	Parameters:
+	- x_cryo, y_cryo: CryoSat-2 projected x, y grid coordinates.
+	- cryo_sit: CryoSat-2 SIT values.
+	- oib_sit: OIB SIT values, already resampled to the CryoSat-2 grid.
+	"""
+	# Step 1: Find CryoSat-2 points where thickness is between 0 and 1 meter
+	mask_cryo = (cryo_sit >= 0) & (cryo_sit <= 1) & ~np.isnan(cryo_sit)
+	
+	# Step 2: Extract corresponding CryoSat-2 coordinates and thickness values
+	cryo_x_filtered = x_cryo[mask_cryo]
+	cryo_y_filtered = y_cryo[mask_cryo]
+	cryo_sit_filtered = cryo_sit[mask_cryo]
+	
+	# Step 3: Extract corresponding OIB thickness values at the filtered CryoSat-2 coordinates
+	oib_sit_filtered = oib_sit[mask_cryo]
+	
+	# Step 4: Plot the pair scatter plot
+	plt.figure(figsize=(8, 6))
+	plt.scatter(oib_sit_filtered, cryo_sit_filtered, alpha=0.5, c='b', edgecolors='k')
+	plt.xlabel("OIB Sea Ice Thickness [m]")
+	plt.ylabel("CryoSat-2 Sea Ice Thickness [m]")
+	plt.title("OIB vs CryoSat-2 Thickness (0 to 1m range)")
+	plt.grid(True)
+	plt.show()
 
 
 def boxplot(cryo_sit, smos_sit, oib_sit):
@@ -477,13 +525,16 @@ def differences(cryo_sit, smos_sit, oib_sit):
  
 
 if __name__ == "__main__":
-    #plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, cryo_sit, 'CryoSat-2 vs OiB')
+	plot_fligth_paths(x_cryo, y_cryo, oib_paths_2011, oib_paths_2012, oib_paths_2013)	
+ 
+ 	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, cryo_sit, 'CryoSat-2 vs OiB')
 	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, resampled_smos_sit, 'SMOS vs OiB') 
 	#pair_scatter_plot(resampled_oib_sit, cryo_sit)
 	#scatter_oib_cryo_pair(x_cryo, y_cryo, cryo_sit, resampled_oib_sit)
-	#hist_cryo_smos_oib(cryo_sit, resampled_oib_sit, resampled_smos_sit)
+	
+ 	#hist_cryo_smos_oib(cryo_sit, resampled_oib_sit, resampled_smos_sit)
 	#boxplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
-	barplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
-	heatmap(cryo_sit, resampled_smos_sit, resampled_oib_sit)
-	differences(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+	#barplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+	#heatmap(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+	#differences(cryo_sit, resampled_smos_sit, resampled_oib_sit)
  

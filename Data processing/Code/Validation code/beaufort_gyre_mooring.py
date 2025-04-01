@@ -15,7 +15,7 @@ Plan
 	- These are the only valid months for Cryosat and SMOS
  - IDS: daily ice draft statistics: number, mean, std, minimum, maximum, median  ✔️
  - Extract, satellite data SMOS and Cryo  
- - Grid mooring and satellite to the same grid (Cryo grid, 25km)
+ - Grid mooring and smos satellite to the same grid (Cryo grid, 25km)
  - Calculate referance monthly mean ice draft thickness from the moorings
  - Identify the satellite grid cells within the search radius of moorings
  - Satellite grid cells within the search radius is averaged 
@@ -29,7 +29,7 @@ Variables in the .mat file: ['BETA', 'ID', 'IDS', 'WLS', 'TILTS', 'OWBETA', 'BTB
 """
 
 mooring_folder = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\BGEP moorings\data converted"
-
+cs_uit_folder = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product"
 
 MOORING_A_LAT = 75
 MOORING_A_LON = -150
@@ -41,10 +41,10 @@ MOORING_D_LON = -140
 RADIUS_RANGE = 200e3
 
 
-def get_mooring_data(path):
-	mooring_files_A = glob.glob(os.path.join(path, "*a_*.mat"))
-	mooring_files_B = glob.glob(os.path.join(path, "*b_*.mat"))
-	mooring_files_D = glob.glob(os.path.join(path, "*d_*.mat"))
+def get_mooring_data(folder_path):
+	mooring_files_A = glob.glob(os.path.join(folder_path, "*a_*.mat"))
+	mooring_files_B = glob.glob(os.path.join(folder_path, "*b_*.mat"))
+	mooring_files_D = glob.glob(os.path.join(folder_path, "*d_*.mat"))
 	
 	ids_A, ids_B, ids_D = [], [], []
 	dates_A, dates_B, dates_D = [], [], []
@@ -90,5 +90,7 @@ ids_A, dates_A = filter_valid_dates(dates_A, ids_A)
 ids_B, dates_B = filter_valid_dates(dates_B, ids_B)
 ids_D, dates_D = filter_valid_dates(dates_D, ids_D)
 
-#print the last 5 rows of the data
-print(dates_A[-5:])
+def get_cyro(folder_path):
+    # Get the CryoSat-2 nc data, making them into a single data set for an time series
+    cryo_files = glob.glob(os.path.join(folder_path, "*.nc"))
+    cryo_files.sort()  # Sort files by date
