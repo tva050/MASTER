@@ -7,17 +7,18 @@ import netCDF4 as nc
 from scipy.interpolate import griddata
 from netCDF4 import Dataset
 
-oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2021\ubristol_cryosat2_seaicethickness_nh25km_2021_10_v1.nc"
+oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product\uit_cryosat2_L3_EASE2_nh25km_2012_10_v3.nc"
 nov_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_11_v3.nc"
 dec_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_12_v3.nc"
 
-cpom = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM\thk_2021_11.map.nc"
+
 def get_data(path):
     data = nc.Dataset(path)
     #print(data.variables.keys())
-    lat = data.variables['Latitude'][:]
-    lon = data.variables['Longitude'][:]
-    si_thickness = data.variables['Sea_Ice_Thickness'][:]
+    lat = data.variables['latitude'][:]
+    lon = data.variables['longitude'][:]
+    si_thickness = data.variables['sea_ice_thickness'][:]
+    time = data.variables['time'][:]
     # Check if lat and lon are 1D and need reshaping
     if lat.ndim == 1 and lon.ndim == 1:
         lon, lat = np.meshgrid(lon, lat)
@@ -25,6 +26,7 @@ def get_data(path):
     # Mask invalid data
     mask = ~np.isnan(si_thickness)
     filtered_si_thickness = np.where(mask, si_thickness, np.nan)
+    print(time)
     return lat, lon, filtered_si_thickness
 
 def print_nc_metadata(file_path):
@@ -160,8 +162,8 @@ def box_plot():
     plt.show()
 
 if __name__ == "__main__":
-    #lat, lon, si_thickness = get_data(oct_path)
-    print_nc_metadata(cpom)
+    lat, lon, si_thickness = get_data(oct_path)
+    #print_nc_metadata(oct_path)
     #write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness)
     #single_figure(lat, lon, si_thickness)
     #single_figure(filtered_lat, filtered_lon, filtered_si_thickness)
