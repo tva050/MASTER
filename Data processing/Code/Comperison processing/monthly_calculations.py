@@ -22,6 +22,42 @@ from netCDF4 import Dataset
 folder_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years"
 
 def SMOS_monthly(folder_path):
+    """ 
+    Processes daily SMOS sea ice thickness data to compute monthly averages and saves the results as NetCDF files.
+    This function reads daily SMOS sea ice thickness data files from the specified folder, groups them by month, 
+    calculates the monthly mean sea ice thickness, uncertainty, and sea ice draft, and saves the results in a new 
+    folder as NetCDF files. The processed data is also returned as a dictionary.
+    
+    Parameters:
+    -----------
+    folder_path : str
+        The path to the folder containing daily SMOS sea ice thickness NetCDF files. The files should follow the 
+        naming convention "SMOS_Icethickness_*_north_*.nc".
+        
+    Returns:
+    --------
+    smos_data : dict
+        A dictionary where the keys are month identifiers in the format "YYYY-MM", and the values are dictionaries 
+        containing the following keys:
+        - "latitude": 2D array of latitude values.
+        - "longitude": 2D array of longitude values.
+        - "mean_sit": 2D array of monthly mean sea ice thickness values.
+        - "uncertainty": 2D array of monthly mean uncertainty values.
+        - "sea_ice_draft": 2D array of monthly mean sea ice draft values.
+        
+    Notes:
+    ------
+    - The function removes the original daily files after processing them.
+    - The output NetCDF files are saved in a subfolder named "SMOS_monthly" within the specified folder.
+    - The sea ice draft is calculated as 93% of the sea ice thickness.
+    - Missing or invalid data points are handled by masking values that are NaN, -999.0, or 0.0.
+    - If a land mask is present in the input files, it is used to set land areas to NaN in the output data.
+    Example:
+    --------
+    >>> smos_data = SMOS_monthly("/path/to/smos/data")
+    >>> print(smos_data["2023-01"]["mean_sit"]) 
+    """
+
     smos_files = glob.glob(os.path.join(folder_path, "SMOS_Icethickness_*_north_*.nc"))
     smos_data = {}
     
