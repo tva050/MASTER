@@ -10,7 +10,7 @@ from netCDF4 import Dataset
 
 folder_path_2013= r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013"
 
-one_smos_file = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\SMOS_Icethickness_v3.3_north_20130321.nc"
+one_smos_file = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\test data\SMOS_Icethickness_v3.3_north_20221216.nc"
 
 def print_nc_metadata(file_path):
     """Prints metadata from a NetCDF (.nc) file."""

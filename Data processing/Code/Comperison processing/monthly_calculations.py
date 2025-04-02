@@ -1,0 +1,120 @@
+import os
+import glob
+import xarray as xr
+import numpy as np
+from netCDF4 import Dataset
+
+
+""" 
+- Function to extract the all files from the SMOS folder
+- Than calculate the mean ice thickness for each month available in the folder
+    - This is done by looking at the file names, which are in the format "SMOS_Icethickness_v3.3_north_YYYYMMDD.nc"
+- The mean ice thickness is calculated for each month and stored in a dictionary with the corresponding year and month as the key
+- The function returns a dictionary with the mean ice thickness for each month
+- The function also returns the lat and lon coordinates for the ice thickness data
+- The function also returns the uncertainty data for the ice thickness data
+- The function also returns the sea ice draft by: draft = thickness * 0.93 (source: https://doi.org/10.1029/2007JC004252)
+- It is so stored in an new .nc file with the name "SMOS_Icethickness_north_YYYYMM.nc" in a new folder called "SMOS_monthly"
+- The new folder is created in the same directory as the original folder
+- The new .nc file contains the mean ice thickness for each month, the mean ice thickness for each month, the lat and lon coordinates, and the uncertainty data
+"""
+
+folder_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\test data"
+
+def SMOS_monthly(folder_path):
+    smos_files = glob.glob(os.path.join(folder_path, "SMOS_Icethickness_*_north_*.nc"))
+    smos_data = {}
+    
+    output_folder = os.path.join(folder_path, "SMOS_monthly")
+    os.makedirs(output_folder, exist_ok=True)
+    
+    monthly_files = {}
+    for file in smos_files:
+        filename = os.path.basename(file)
+        date_part = filename.split("_")[-1].split(".")[0]
+        year, month = date_part[:4], date_part[4:6]
+        date_key = f"{year}-{month}"
+        
+        if date_key not in monthly_files:
+            monthly_files[date_key] = []
+        monthly_files[date_key].append(file)
+    
+    print(len(monthly_files), "months found")
+    
+    for date_key, files in monthly_files.items():
+        sit_list = []
+        uncertainty_list = []
+        lat, lon = None, None # place holders 
+        
+        for file in files:
+            with xr.open_dataset(file) as ds:
+                sit_list.append(ds["sea_ice_thickness"].values)
+                uncertainty_list.append(ds["ice_thickness_uncertainty"].values)
+                land_mask = ds.get("land", None)
+                if land_mask is not None:
+                    sit_list[-1] = np.where(land_mask == 1, np.nan, sit_list[-1])
+                    uncertainty_list[-1] = np.where(land_mask == 1, np.nan, uncertainty_list[-1])
+                if lat is None:
+                    lat = ds["latitude"].values
+                    lon = ds["longitude"].values
+                    
+        mask_sit = ~np.isnan(sit_list) & (sit_list != -999.0) & (sit_list != 0.0)
+        mask_unc = ~np.isnan(uncertainty_list) & (uncertainty_list != -999.0) & (uncertainty_list != 0.0)
+        sit = np.where(mask_sit, sit_list, np.nan)
+        uncertainty = np.where(mask_unc, uncertainty_list, np.nan)
+        
+        sit = np.array(sit_list)
+        uncertainty = np.array(uncertainty_list)
+        mean_sit = np.mean(sit[0,:,:], axis=0)
+        mean_unc = np.mean(uncertainty[0,:,:], axis=0)
+        
+        sea_ice_draft = mean_sit * 0.93
+        smos_data[date_key] = {
+            "latitude": lat,
+            "longitude": lon,
+            "mean_sit": mean_sit,
+            "uncertainty": mean_unc,
+            "sea_ice_draft": sea_ice_draft,
+        }
+
+        output_file = os.path.join(output_folder, f"SMOS_monthly_Icethickness_north_{date_key.replace('-', '')}.nc")
+        new_ds = xr.Dataset(
+            {
+                "mean_ice_thickness": (["y", "x"], mean_sit),
+                "uncertainty": (["y", "x"], mean_unc),
+                "sea_ice_draft": (["y", "x"], sea_ice_draft),
+            },
+            coords={
+                "latitude": (["y", "x"], lat),
+                "longitude": (["y", "x"], lon),
+            },
+        )
+
+        new_ds.to_netcdf(output_file)
+    
+    return smos_data
+
+#smos_data = SMOS_monthly(folder_path)
+   
+month_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\test data\SMOS_monthly\SMOS_monthly_Icethickness_north_201303.nc"
+def print_nc_metadata(file_path):
+    """Prints metadata from a NetCDF (.nc) file."""
+    # Open the NetCDF file
+    with Dataset(file_path, 'r') as nc_file:
+        print(nc_file.variables.keys())
+        # Print global attributes
+        print("Global Attributes:")
+        for attr in nc_file.ncattrs():
+            print(f"{attr}: {nc_file.getncattr(attr)}")
+        
+        print("\nVariables:")
+        for var_name, var in nc_file.variables.items():
+            print(f"{var_name}:")
+            print(f"  Dimensions: {var.dimensions}")
+            print(f"  Shape: {var.shape}")
+            print(f"  Data Type: {var.dtype}")
+            
+            # Print variable attributes
+            for attr in var.ncattrs():
+                print(f"  {attr}: {var.getncattr(attr)}")
+                
