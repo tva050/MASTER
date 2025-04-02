@@ -5,6 +5,9 @@ import pandas as pd
 import h5py
 import scipy.io
 import datetime
+import netCDF4 as nc
+import xarray as xr
+import matplotlib.pyplot as plt
 
 """ 
 Plan 
@@ -81,16 +84,64 @@ def get_mooring_data(folder_path):
 ids_A, ids_B, ids_D, dates_A, dates_B, dates_D = get_mooring_data(mooring_folder)
 
 def filter_valid_dates(dates, ids):
-    valid_months = {1, 2, 3, 4, 10, 11, 12}
-    months = np.array([int(date.split("-")[1]) for date in dates])
-    valid_indices = np.isin(months, list(valid_months))
-    return ids[valid_indices], dates[valid_indices]
+	valid_months = {1, 2, 3, 4, 10, 11, 12}
+	months = np.array([int(date.split("-")[1]) for date in dates])
+	valid_indices = np.isin(months, list(valid_months))
+	return ids[valid_indices], dates[valid_indices]
  
 ids_A, dates_A = filter_valid_dates(dates_A, ids_A)
 ids_B, dates_B = filter_valid_dates(dates_B, ids_B)
 ids_D, dates_D = filter_valid_dates(dates_D, ids_D)
 
 def get_cyro(folder_path):
-    # Get the CryoSat-2 nc data, making them into a single data set for an time series
-    cryo_files = glob.glob(os.path.join(folder_path, "*.nc"))
-    cryo_files.sort()  # Sort files by date
+	""" 
+	- Get Cryosat data from the folder path, which is the UiT product folder
+	- need to store the lat, lon, and ice thickness data for all cryosat files, where the data should be stored with the corresponding date
+		- dates are given in the gloabal attribute of the file with Year and Month 
+		- It should be possible to extract the dates from the file name
+	- The data should be stored in a dictionary with the date as the key and the data as the value
+	"""
+	cryosat_files = glob.glob(os.path.join(folder_path, "*.nc"))
+	cryosat_data = {}
+	
+	for file in cryosat_files:
+		with xr.open_dataset(file) as ds:
+			# Extract year and month from global attributes
+			year = ds.attrs.get("Year", None)
+			month = ds.attrs.get("Month", None)
+			
+			if year is None or month is None:
+				print(f"Skipping file {file} due to missing date info")
+				continue
+			
+			date_key = f"{year}-{str(month).zfill(2)}"
+			
+			# Extract relevant data
+			lat = ds["latitude"].values
+			lon = ds["longitude"].values
+			sit = ds["sea_ice_thickness"].values
+			ifb = ds["sea_ice_freeboard"].values
+			
+			# Mask invalid data
+			mask = ~np.isnan(sit) & ~np.isnan(ifb)
+			sit = np.where(mask, sit, np.nan)
+			ifb = np.where(mask, ifb, np.nan)
+   
+			# Calculate the sea ice draft: sid = sit - ifb
+			sid = sit - ifb
+   
+			# Store data in dictionary
+			cryosat_data[date_key] = {
+				"latitude": lat,
+				"longitude": lon,
+				"sea_ice_thickness": sit,
+				"sea_ice_freeboard": ifb,
+				"sea_ice_draft": sid
+			}
+	
+	return cryosat_data
+
+def get_smos(folder_path):
+    pass
+
+cryosat_data = get_cyro(cs_uit_folder)
