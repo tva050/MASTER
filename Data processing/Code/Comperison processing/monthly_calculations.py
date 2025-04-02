@@ -19,7 +19,7 @@ from netCDF4 import Dataset
 - The new .nc file contains the mean ice thickness for each month, the mean ice thickness for each month, the lat and lon coordinates, and the uncertainty data
 """
 
-folder_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\test data"
+folder_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years"
 
 def SMOS_monthly(folder_path):
     smos_files = glob.glob(os.path.join(folder_path, "SMOS_Icethickness_*_north_*.nc"))
@@ -51,12 +51,18 @@ def SMOS_monthly(folder_path):
                 sit_list.append(ds["sea_ice_thickness"].values)
                 uncertainty_list.append(ds["ice_thickness_uncertainty"].values)
                 land_mask = ds.get("land", None)
+                
                 if land_mask is not None:
                     sit_list[-1] = np.where(land_mask == 1, np.nan, sit_list[-1])
                     uncertainty_list[-1] = np.where(land_mask == 1, np.nan, uncertainty_list[-1])
+                else:
+                    print("land mask not found in all files")
+                    
                 if lat is None:
                     lat = ds["latitude"].values
                     lon = ds["longitude"].values
+            
+            os.remove(file)  # Remove the file after processing
                     
         mask_sit = ~np.isnan(sit_list) & (sit_list != -999.0) & (sit_list != 0.0)
         mask_unc = ~np.isnan(uncertainty_list) & (uncertainty_list != -999.0) & (uncertainty_list != 0.0)
@@ -88,13 +94,19 @@ def SMOS_monthly(folder_path):
                 "latitude": (["y", "x"], lat),
                 "longitude": (["y", "x"], lon),
             },
+            attrs={
+                "description": "Monthly mean sea ice thickness from daily SMOS data",
+                "date": date_key,
+                "source": "SMOS",
+                "units": "m",
+            },
         )
 
         new_ds.to_netcdf(output_file)
     
     return smos_data
 
-#smos_data = SMOS_monthly(folder_path)
+smos_data = SMOS_monthly(folder_path)
    
 month_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\test data\SMOS_monthly\SMOS_monthly_Icethickness_north_201303.nc"
 def print_nc_metadata(file_path):
