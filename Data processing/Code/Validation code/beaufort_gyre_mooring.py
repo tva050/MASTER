@@ -17,7 +17,7 @@ Plan
 	- Filter out data which not covers the month 01, 02, 03, 04, 10, 11, and 12
 	- These are the only valid months for Cryosat and SMOS
  - IDS: daily ice draft statistics: number, mean, std, minimum, maximum, median  ✔️
- - Extract, satellite data SMOS and Cryo  
+ - Extract, satellite data SMOS and Cryo  ✔️
  - Grid mooring and smos satellite to the same grid (Cryo grid, 25km)
  - Calculate referance monthly mean ice draft thickness from the moorings
  - Identify the satellite grid cells within the search radius of moorings
@@ -33,6 +33,7 @@ Variables in the .mat file: ['BETA', 'ID', 'IDS', 'WLS', 'TILTS', 'OWBETA', 'BTB
 
 mooring_folder = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\BGEP moorings\data converted"
 cs_uit_folder = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product"
+smos_folder = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\SMOS_monthly"
 
 MOORING_A_LAT = 75
 MOORING_A_LON = -150
@@ -113,7 +114,7 @@ def get_cyro(folder_path):
 			if year is None or month is None:
 				print(f"Skipping file {file} due to missing date info")
 				continue
-			
+		
 			date_key = f"{year}-{str(month).zfill(2)}"
 			
 			# Extract relevant data
@@ -142,6 +143,36 @@ def get_cyro(folder_path):
 	return cryosat_data
 
 def get_smos(folder_path):
-    pass
+	smos_files = glob.glob(os.path.join(folder_path, "*.nc"))
+	smos_data = {}
+	
+	for file in smos_files:
+		with xr.open_dataset(file) as ds:
+			# Extract year and month from global attributes
+			date = ds.attrs.get("date", None)
+
+			if date is None:
+				print(f"Skipping file {file} due to missing date info")
+				continue
+			
+			year, month = date.split("-")
+			date_key = f"{year}-{str(month).zfill(2)}"
+
+			lat = ds["latitude"].values
+			lon = ds["longitude"].values
+			sit = ds["mean_ice_thickness"].values
+			sid = ds["sea_ice_draft"].values
+
+			smos_data[date_key] = {
+				"latitude": lat,
+				"longitude": lon,
+				"sea_ice_thickness": sit,
+				"sea_ice_draft": sid
+			}
+
+	return smos_data
+   
+   
 
 cryosat_data = get_cyro(cs_uit_folder)
+smos_data = get_smos(smos_folder)

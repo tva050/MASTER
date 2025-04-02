@@ -110,7 +110,8 @@ def SMOS_monthly(folder_path):
         mean_sit = np.mean(sit[0,:,:], axis=0)
         mean_unc = np.mean(uncertainty[0,:,:], axis=0)
         
-        sea_ice_draft = mean_sit * 0.93
+        sea_ice_draft = mean_sit * 0.93 # source: https://doi.org/10.1029/2007JC004252
+        
         smos_data[date_key] = {
             "latitude": lat,
             "longitude": lon,
@@ -142,9 +143,8 @@ def SMOS_monthly(folder_path):
     
     return smos_data
 
-smos_data = SMOS_monthly(folder_path)
+#smos_data = SMOS_monthly(folder_path)
    
-month_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\test data\SMOS_monthly\SMOS_monthly_Icethickness_north_201303.nc"
 def print_nc_metadata(file_path):
     """Prints metadata from a NetCDF (.nc) file."""
     # Open the NetCDF file
@@ -166,3 +166,4 @@ def print_nc_metadata(file_path):
             for attr in var.ncattrs():
                 print(f"  {attr}: {var.getncattr(attr)}")
                 
+print_nc_metadata(month_path)
