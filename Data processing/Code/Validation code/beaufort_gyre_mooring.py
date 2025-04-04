@@ -357,98 +357,141 @@ print("smos_sid shape:", smos_df["sea_ice_draft"].shape)
 print("smos_df shape:", smos_df.shape)
 
 
-def indentify_cells(x_source, y_source, sid, x_ref, y_ref, search_radius = RADIUS_RANGE):
+def identify_cells_df(df, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
 	"""
-	Identify cells in the reference grid that are within a specified search radius of the source points.
-	- calculate the mean sea ice draft within the search radius for the satellite products. 
-	- median, and standard deviation of the sea ice draft within the search radius for the mooring data.
+	Identify satellite grid cells within a specified search radius of a mooring for each month,
+	and compute statistics (mean, median, std, min, max) of sea ice draft for that month.
+	
+	This function assumes that each row in the DataFrame `df` contains:
+	  - "longitude": a 2D array of longitude values,
+	  - "latitude": a 2D array of latitude values,
+	  - "sea_ice_draft": a 2D array of sea ice draft values.
+	
+	Parameters
+	----------
+	df : pd.DataFrame
+		DataFrame where each row corresponds to a month (or time step) and contains
+		the satellite grid data.
+	mooring_x : float
+		Mooring x coordinate (projected to the same coordinate system as the satellite grid).
+	mooring_y : float
+		Mooring y coordinate.
+	search_radius : float, optional
+		Search radius (in same units as x/y coordinates), default is 200e3.
+		
+	Returns
+	-------
+	pd.DataFrame
+		A DataFrame with one row per time step containing:
+		 - date
+		 - mean_draft
+		 - median_draft
+		 - std_draft
+		 - min_draft
+		 - max_draft
 	"""
-	pass
-
-def rangesearch(coords, mooring_coords, radius):
-	dist = np.linalg.norm(coords - mooring_coords, axis=1)
-	return np.where(dist <= radius)[0]  # Return indices of points within the radius
-
-
-mooring_A_coords = np.array([mooring_a_x, mooring_a_y])
-mooring_B_coords = np.array([mooring_b_x, mooring_b_y])
-mooring_D_coords = np.array([mooring_d_x, mooring_d_y])
-
-grid_coords_cryo = np.vstack((cryosat_x.ravel(), cryosat_y.ravel())).T
-
-IDX_A = rangesearch(grid_coords_cryo, mooring_A_coords, RADIUS_RANGE)
-IDX_B = rangesearch(grid_coords_cryo, mooring_B_coords, RADIUS_RANGE)
-IDX_D = rangesearch(grid_coords_cryo, mooring_D_coords, RADIUS_RANGE)
-
-cryosat_sid = np.vstack(cryosat_df["sea_ice_draft"].values)
-smos_sid = np.vstack(smos_df["sea_ice_draft"].values)
-print("New cryosat_sid shape:", cryosat_sid.shape) 
-print(f"Min index in IDX_A: {np.min(IDX_A)}")
-print(f"Max index in IDX_A: {np.max(IDX_A)}")
-print(f"Size of cryo_sid: {cryosat_sid.size}")
-
-def calc_draft(draft_values, search_indices):
-	valid_indices = np.array(search_indices)
-	valid_indices = valid_indices[valid_indices < draft_values.size]  # Ensure valid indices
+	results = []
 	
-	if len(valid_indices) == 0:  # Handle case where no valid indices exist
-		return np.nan
+	# Loop over each month (row) in the DataFrame
+	for idx, row in df.iterrows():
+		# Reproject the grid for this month
+		# (if the row already contains reprojected coordinates, you can use them directly)
+		x_grid, y_grid = reprojecting(row["longitude"], row["latitude"])
+		
+		# Flatten the grids to get a list of grid cell coordinates (n_points x 2)
+		points = np.column_stack((x_grid.flatten(), y_grid.flatten()))
+		tree = cKDTree(points)
+		
+		# Find indices of grid cells within the search radius of the mooring point
+		indices = tree.query_ball_point([mooring_x, mooring_y], r=search_radius)
+		
+		# Extract the sea ice draft for this month and flatten
+		sid_grid = row["sea_ice_draft"]
+		sid_values = sid_grid.flatten()[indices]
+		
+		# Remove NaNs from the draft values
+		sid_valid = sid_values[~np.isnan(sid_values)]
+		
+		if len(sid_valid) > 0:
+			stats = {
+				"mean_draft": np.mean(sid_valid),
+				"median_draft": np.median(sid_valid),
+				"std_draft": np.std(sid_valid),
+				"min_draft": np.min(sid_valid),
+				"max_draft": np.max(sid_valid)
+			}
+		else:
+			stats = {
+				"mean_draft": np.nan,
+				"median_draft": np.nan,
+				"std_draft": np.nan,
+				"min_draft": np.nan,
+				"max_draft": np.nan
+			}
+		
+		stats["date"] = row["date"]  # assuming the date column exists in df
+		results.append(stats)
+		
+	return pd.DataFrame(results)
+
+cryosat_stats_A = identify_cells_df(cryosat_df, mooring_a_x, mooring_a_y)
+cryosat_stats_B = identify_cells_df(cryosat_df, mooring_b_x, mooring_b_y)
+cryosat_stats_D = identify_cells_df(cryosat_df, mooring_d_x, mooring_d_y)
+
+smos_stats_A = identify_cells_df(smos_df, mooring_a_x, mooring_a_y)
+smos_stats_B = identify_cells_df(smos_df, mooring_b_x, mooring_b_y)
+smos_stats_D = identify_cells_df(smos_df, mooring_d_x, mooring_d_y)
+
+def time_series(cryosat_stats, smos_stats, mooring_stats):
+	# times series for cryosat, smos and mooring data 
+	# create a time series plot for the mean sea ice draft for each mooring with the included mooring data 
+	# with the mean sea ice draft for each month on the y-axis and the date on the x-axis
 	
-	return np.nanmean(np.take(draft_values, valid_indices))
-
-def calc_monthly_draft(df, draft_values, search_indices):
-    df = df.iloc[search_indices]  # Filter only relevant indices
-    df = df.dropna(subset=["sea_ice_draft"])  # Remove NaN values
-    monthly_draft = df.groupby(df["date"].dt.to_period("M"))["sea_ice_draft"].mean()
-    return monthly_draft
-
-monthly_draft_A_cryo = calc_monthly_draft(cryosat_df, cryosat_sid, IDX_A)
-monthly_draft_B_cryo = calc_monthly_draft(cryosat_df, cryosat_sid, IDX_B)
-monthly_draft_D_cryo = calc_monthly_draft(cryosat_df, cryosat_sid, IDX_D)
-
-# Compute monthly mean sea ice draft for SMOS at each mooring
-monthly_draft_A_smos = calc_monthly_draft(smos_df, smos_sid, IDX_A)
-monthly_draft_B_smos = calc_monthly_draft(smos_df, smos_sid, IDX_B)
-monthly_draft_D_smos = calc_monthly_draft(smos_df, smos_sid, IDX_D)
-
-# Calculate the mean sea ice draft for CryoSat-2 for mooring A, B, and D
-#mean_draft_A_cryo = calc_draft(cryosat_sid, IDX_A)
-#mean_draft_B_cryo = calc_draft(cryosat_sid, IDX_B)
-#mean_draft_D_cryo = calc_draft(cryosat_sid, IDX_D)
-#
-#mean_draft_A_smos = calc_draft(smos_sid, IDX_A)
-#mean_draft_B_smos = calc_draft(smos_sid, IDX_B)
-#mean_draft_D_smos = calc_draft(smos_sid, IDX_D)
-
-
-def time_series_A():
-    # getting draft at mooring A
-	cryo_draft_A = mean_draft_A_cryo
-	smos_draft_A = mean_draft_A_smos
-	mooring_draft_A = monthly_stats_A["mean_draft"].values
-	pass
-
-
-
-#time_series_A()
-
-""" def plot_sea_ice_draft(cryosat_df):
-	# Extract median sea ice draft for each time step (assuming it's a 2D array)
-	cryosat_df["sid_median"] = cryosat_df["sea_ice_draft"].apply(lambda x: np.nanmean(x))
-
-	# Sort by date
-	cryosat_df = cryosat_df.sort_values(by="date")
-
-	# Plot
+	# Ensure the date columns are datetime objects
+	cryosat_stats["date"] = pd.to_datetime(cryosat_stats["date"])
+	smos_stats["date"] = pd.to_datetime(smos_stats["date"])
+	mooring_stats["date"] = pd.to_datetime(mooring_stats["date"])
+	
+	# Sort by date to ensure proper plotting
+	cryosat_stats.sort_values("date", inplace=True)
+	smos_stats.sort_values("date", inplace=True)
+	mooring_stats.sort_values("date", inplace=True)
+	
+	# Create the plot
 	plt.figure(figsize=(12, 6))
-	plt.plot(cryosat_df["date"], cryosat_df["sid_median"], marker="o", linestyle="-", color="b", label="Median Sea Ice Draft")
 	
+	plt.plot(mooring_stats["date"], mooring_stats["mean_draft"], label="Mooring", color="black", zorder=0)
+	plt.scatter(cryosat_stats["date"], cryosat_stats["mean_draft"], label="CryoSat-2", color="blue", zorder=1, s=10)
+	plt.scatter(smos_stats["date"], smos_stats["mean_draft"], label="SMOS", color="orange", zorder=2, s=10)
+	#plt.plot(cryosat_stats["date"], cryosat_stats["mean_draft"], label="CryoSat-2", zorder=1)
+	#plt.plot(smos_stats["date"], smos_stats["mean_draft"], label="SMOS", zorder=2)
+	
+	
+	# Set plot labels and title
 	plt.xlabel("Date")
-	plt.ylabel("Sea Ice Draft (m)")
-	plt.title("Time Series of Sea Ice Draft from CryoSat-2")
-	plt.xticks(rotation=45)
-	plt.grid(True)
+	plt.ylabel("Mean Sea Ice Draft (m)")
+	plt.title("Monthly Mean Sea Ice Draft Time Series")
 	plt.legend()
-	plt.show() """
 	
-#plot_sea_ice_draft(cryosat_df)
+	# Improve the x-axis date formatting
+	plt.gcf().autofmt_xdate()
+	plt.grid(True)
+	plt.tight_layout()
+	plt.show()
+
+def times_series_all():
+	monthly_stats_A["date"] = pd.to_datetime(monthly_stats_A["date"])
+	monthly_stats_B["date"] = pd.to_datetime(monthly_stats_B["date"])
+	monthly_stats_D["date"] = pd.to_datetime(monthly_stats_D["date"])
+	
+	cryosat_stats_A["date"] = pd.to_datetime(cryosat_stats_A["date"])
+	cryosat_stats_B["date"] = pd.to_datetime(cryosat_stats_B["date"])
+	cryosat_stats_D["date"] = pd.to_datetime(cryosat_stats_D["date"])
+ 
+	smos_stats_A["date"] = pd.to_datetime(smos_stats_A["date"])
+	smos_stats_B["date"] = pd.to_datetime(smos_stats_B["date"])	
+	smos_stats_D["date"] = pd.to_datetime(smos_stats_D["date"])
+ 
+	
+
+time_series(cryosat_stats_A, smos_stats_A, monthly_stats_A)
