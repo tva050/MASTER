@@ -22,42 +22,43 @@ from netCDF4 import Dataset
 folder_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years"
 
 def SMOS_monthly(folder_path):
-    """ 
-    Processes daily SMOS sea ice thickness data to compute monthly averages and saves the results as NetCDF files.
-    This function reads daily SMOS sea ice thickness data files from the specified folder, groups them by month, 
-    calculates the monthly mean sea ice thickness, uncertainty, and sea ice draft, and saves the results in a new 
-    folder as NetCDF files. The processed data is also returned as a dictionary.
-    
-    Parameters:
-    -----------
+    """
+    Processes daily SMOS sea ice thickness data to compute monthly averages and saves results as NetCDF files.
+
+    This function reads daily SMOS sea ice thickness NetCDF files from the specified folder, groups them by month, 
+    computes the monthly mean sea ice thickness, uncertainty, and sea ice draft, and saves the results in a 
+    new folder. The original daily files are removed after processing.
+
+    Parameters
+    ----------
     folder_path : str
-        The path to the folder containing daily SMOS sea ice thickness NetCDF files. The files should follow the 
-        naming convention "SMOS_Icethickness_*_north_*.nc".
-        
-    Returns:
-    --------
-    smos_data : dict
-        A dictionary where the keys are month identifiers in the format "YYYY-MM", and the values are dictionaries 
-        containing the following keys:
-        - "latitude": 2D array of latitude values.
-        - "longitude": 2D array of longitude values.
-        - "mean_sit": 2D array of monthly mean sea ice thickness values.
-        - "uncertainty": 2D array of monthly mean uncertainty values.
-        - "sea_ice_draft": 2D array of monthly mean sea ice draft values.
-        
-    Notes:
-    ------
-    - The function removes the original daily files after processing them.
-    - The output NetCDF files are saved in a subfolder named "SMOS_monthly" within the specified folder.
-    - The sea ice draft is calculated as 93% of the sea ice thickness.
-    - Missing or invalid data points are handled by masking values that are NaN, -999.0, or 0.0.
-    - If a land mask is present in the input files, it is used to set land areas to NaN in the output data.
-    Example:
+        The path to the folder containing daily SMOS sea ice thickness NetCDF files. The files should follow 
+        the naming convention `"SMOS_Icethickness_*_north_*.nc"`.
+
+    Returns
+    -------
+    dict
+        A dictionary where keys are formatted as "YYYY-MM" (year-month), and values are dictionaries containing:
+        - **latitude** (numpy.ndarray): 2D array of latitude values.
+        - **longitude** (numpy.ndarray): 2D array of longitude values.
+        - **mean_sit** (numpy.ndarray): 2D array of monthly mean sea ice thickness values.
+        - **uncertainty** (numpy.ndarray): 2D array of monthly mean uncertainty values.
+        - **sea_ice_draft** (numpy.ndarray): 2D array of monthly mean sea ice draft values.
+
+    Notes
+    -----
+    - The function removes the original daily NetCDF files after processing them.
+    - The output NetCDF files are saved in a subfolder named `"SMOS_monthly"` within the specified folder.
+    - Sea ice draft is computed as `sea_ice_thickness * 0.93`, based on: 
+      `https://doi.org/10.1029/2007JC004252`
+    - Missing or invalid data points (`NaN`, `-999.0`, or `0.0`) are masked before averaging.
+    - If a land mask is present in the input files (`land` variable), land areas are set to `NaN`.
+
+    Examples
     --------
     >>> smos_data = SMOS_monthly("/path/to/smos/data")
-    >>> print(smos_data["2023-01"]["mean_sit"]) 
+    >>> print(smos_data["2023-01"]["mean_sit"])  # Prints monthly mean sea ice thickness for January 2023
     """
-
     smos_files = glob.glob(os.path.join(folder_path, "SMOS_Icethickness_*_north_*.nc"))
     smos_data = {}
     

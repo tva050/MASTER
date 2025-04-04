@@ -1,508 +1,497 @@
+import os
+import glob
 import numpy as np
-from scipy.spatial import cKDTree
-import matplotlib.pyplot as plt
-from cartopy import crs as ccrs, feature as cfeature
-import netCDF4 as nc
-from  scipy.interpolate import griddata
 import pandas as pd
-from pyproj import Proj, Transformer, transform
+import scipy.io
+import xarray as xr
+import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-import seaborn as sns
-from mpl_toolkits.basemap import Basemap
+from scipy.spatial import cKDTree
 
-
-import warnings
-warnings.filterwarnings("ignore", message="facecolor will have no effect*")
-
-oib_paths_2013 = [
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130321.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130322.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130323.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130324.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130425.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130326.txt"
-]
-
-oib_paths_2011 = [
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110316.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110317.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110318.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110322.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110323.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110325.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110326.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110328.txt"
-]
-
-smos_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_mean_thickness.nc"
-
-cryo_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\2013\uit_cryosat2_L3_EASE2_nh25km_2013_03_v3.nc"
-
-def get_data(path):
-	df = pd.read_csv(path, dtype=str, low_memory=False)  # Read as strings to avoid mixed types
-	df = df.apply(pd.to_numeric, errors='coerce')  # Convert all columns to numeric, forcing errors to NaN
-
-	# Extract required numerical columns
-	lat = df["lat"].values
-	lon = df["lon"].values
-	thickness = df["thickness"].values
-
-	# Apply mask to remove invalid data
-	mask = (thickness != -99999.) & (thickness != 0.0)
-	thickness = np.where(mask, thickness, np.nan)
-
-	return lat, lon, thickness
-
-def extract_all_oib(oib_paths):
-	all_lat, all_lon, all_thickness = [], [], []
-	for path in oib_paths:
-		lat, lon, thickness = get_data(path)
-
-
-		all_lat.extend(lat)
-		all_lon.extend(lon)
-		all_thickness.extend(thickness)
-	return all_lat, all_lon, all_thickness 
-
-
-def get_smos(path):
-	data = nc.Dataset(path)
-	#print(data.variables.keys())
-	lat = data.variables['latitude'][:]
-	lon = data.variables['longitude'][:]
-	si_thickness = data.variables['sea_ice_thickness'][:]
-	#print(si_thickness.shape)
-	return lat, lon, si_thickness
-
-
-def get_cryo(path):
-	data = nc.Dataset(path)
-	#print(data.variables.keys())
+""" 
+Plan 
+ - Extract the files for corresponding mooring,....................................................✔️
+	- these are represtented in the file name as "**a_**.mat", "**b_**.mat" and "**c_**.mat".......✔️
+ - create an single data set for each mooring (a, b, d), which includes IDS and dates..............✔️
+	- Filter out data which not covers the month 01, 02, 03, 04, 10, 11, and 12
+	- These are the only valid months for Cryosat and SMOS
+ - IDS: daily ice draft statistics: number, mean, std, minimum, maximum, median....................✔️
+ - Extract, satellite data SMOS and Cryo...........................................................✔️
+ - Reproject the coordinates to polarstereo........................................................✔️
+ - Grid mooring and smos satellite to the same grid (Cryo grid, 25km)?.............................✖️
+	- i dont think this is necessary, as the we going to use the mooring to look 
+ 	  for satellite data wihtin the search radius
+ - Calculate referance monthly mean ice draft thickness from the moorings..........................✔️
+	- Calculate the mean, std, min, max, and median for each month
+ - Identify the satellite grid cells within the search radius of moorings
+ - Satellite grid cells within the search radius is averaged 
+ - Convert the derived sea ice freeboard to draft (possible earlier)...............................✔️
+	- sid = sit - ifb 
+ - Plot time series
+	- Ranging from 0.1 - 1m draft 
 	
-	lat = data.variables['latitude'][:]
-	lon = data.variables['longitude'][:]
-	si_thickness = data.variables['sea_ice_thickness'][:]
-	#si_thickness_un = data.variables['Sea_Ice_Thickness_Uncertainty'][:]
+Note:
+Variables in the .mat file: ['BETA', 'ID', 'IDS', 'WLS', 'TILTS', 'OWBETA', 'BTBETA', 'WL', 'T', 'yday', 'dates', 'name']
+"""
+
+mooring_folder = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\BGEP moorings\data converted"
+cs_uit_folder = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product"
+smos_folder = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\SMOS_monthly"
+
+MOORING_A_LAT = 75
+MOORING_A_LON = -150
+MOORING_B_LAT = 78
+MOORING_B_LON = -150
+MOORING_D_LAT = 74
+MOORING_D_LON = -140
+
+RADIUS_RANGE = 200e3
+
+
+def get_mooring_data(folder_path):
+	mooring_files_A = glob.glob(os.path.join(folder_path, "*a_*.mat"))
+	mooring_files_B = glob.glob(os.path.join(folder_path, "*b_*.mat"))
+	mooring_files_D = glob.glob(os.path.join(folder_path, "*d_*.mat"))
 	
-	# Check if lat and lon are 1D and need reshaping
-	if lat.ndim == 1 and lon.ndim == 1:
-		lon, lat = np.meshgrid(lon, lat)
-		print('Reshaped lat and lon')
-	# Mask invalid data
-	mask = ~np.isnan(si_thickness)
-	filtered_si_thickness = np.where(mask, si_thickness, np.nan)
-	return lat, lon, filtered_si_thickness
+	ids_A, ids_B, ids_D = [], [], []
+	dates_A, dates_B, dates_D = [], [], []
+   
+	# handles mooring A
+	for files in mooring_files_A:
+		data = scipy.io.loadmat(files)
+		dates_A.append(data["dates"])
+		ids_a = data["IDS"]
+		ids_A.append(ids_a[:, :6])
+	
+	for files in mooring_files_B:
+		data = scipy.io.loadmat(files)
+		dates_B.append(data["dates"])
+		ids_b = data["IDS"]
+		ids_B.append(ids_b[:, :6])
+  
+	for files in mooring_files_D:
+		data = scipy.io.loadmat(files)
+		dates_D.append(data["dates"])
+		ids_d = data["IDS"]
+		ids_D.append(ids_d[:, :6])
+  
+	ids_A = np.concatenate(ids_A, axis=0)
+	ids_B = np.concatenate(ids_B, axis=0)
+	ids_D = np.concatenate(ids_D, axis=0)
+ 
+	dates_A = np.concatenate(dates_A, axis=0)
+	dates_B = np.concatenate(dates_B, axis=0)
+	dates_D = np.concatenate(dates_D, axis=0)
+	
+	return ids_A, ids_B, ids_D, dates_A, dates_B, dates_D
 
+ids_A, ids_B, ids_D, dates_A, dates_B, dates_D = get_mooring_data(mooring_folder)
 
+def filter_valid_dates(dates, ids):
+	valid_months = {1, 2, 3, 4, 10, 11, 12}
+	months = np.array([int(date.split("-")[1]) for date in dates])
+	valid_indices = np.isin(months, list(valid_months))
+	return ids[valid_indices], dates[valid_indices]
+ 
+ids_A, dates_A = filter_valid_dates(dates_A, ids_A)
+ids_B, dates_B = filter_valid_dates(dates_B, ids_B)
+ids_D, dates_D = filter_valid_dates(dates_D, ids_D)
 
-oib_lat, oib_lon, oib_sit = extract_all_oib(oib_paths_2013)
-smos_lat, smos_lon, smos_sit = get_smos(smos_path)
-cryo_lat, cryo_lon, cryo_sit = get_cryo(cryo_path)
+def monthly_statistics(ids, dates):
+	""" 
+	- Calculates monthly statistics for sea ice draft from mooring data.
+	- Computes mean, standard deviation, minimum, maximum, and median for each month.
+	- with the corresponding dates. in the format YYYY-MM
+	"""
+	dates = pd.to_datetime(dates)
+	
+	daily_mean = ids[:,1]
+	df = pd.DataFrame({"date": dates, "mean_draft": daily_mean})
+	
+	monthly_stats = df.groupby(df["date"].dt.to_period("M")).agg(
+		mean_draft=("mean_draft", "mean"),
+		std_draft=("mean_draft", "std"),
+		min_draft=("mean_draft", "min"),
+		max_draft=("mean_draft", "max"),
+		median_draft=("mean_draft", "median")
+	).reset_index()
+	monthly_stats["date"] = monthly_stats["date"].astype(str)
+	
+	return monthly_stats
 
-def plot_data_oib(lon, lat, si_thickness):
-	# Convert lon and lat to NumPy arrays if they are lists
+monthly_stats_A = monthly_statistics(ids_A, dates_A)
+monthly_stats_B = monthly_statistics(ids_B, dates_B)
+monthly_stats_D = monthly_statistics(ids_D, dates_D)
+
+def get_cyro(folder_path):
+	""" 
+	Reads CryoSat-2 data from NetCDF files in the specified folder and extracts relevant 
+	information into a pandas DataFrame for easier time-series analysis.
+
+	Parameters
+	----------
+	folder_path : str
+		The path to the folder containing CryoSat-2 NetCDF files.
+
+	Returns
+	-------
+	pd.DataFrame
+		A DataFrame where each row corresponds to a unique timestamp and contains the following columns:
+		- **date** (str): Date in "YYYY-MM" format.
+		- **latitude** (numpy.ndarray): 2D array of latitude values.
+		- **longitude** (numpy.ndarray): 2D array of longitude values.
+		- **sea_ice_thickness** (numpy.ndarray): 2D array of sea ice thickness values.
+		- **sea_ice_freeboard** (numpy.ndarray): 2D array of sea ice freeboard values.
+		- **sea_ice_draft** (numpy.ndarray): 2D array of sea ice draft values (calculated as thickness - freeboard).
+
+	Notes
+	-----
+	- The function expects NetCDF files to have `Year` and `Month` attributes.
+	- Files missing date attributes are skipped with a warning message.
+	- Invalid data points (NaN values) in the sea ice thickness or freeboard are masked 
+	  and replaced with NaN in the output arrays.
+	- The sea ice draft is calculated as: `sea_ice_draft = sea_ice_thickness - sea_ice_freeboard`.
+
+	Examples
+	--------
+	>>> cryosat_df = get_cyro("/path/to/cryosat/data")
+	>>> print(cryosat_df.head())  # Displays first few rows of the dataset
+	"""
+	cryosat_files = glob.glob(os.path.join(folder_path, "*.nc"))
+	data_list = []
+
+	for file in cryosat_files:
+		with xr.open_dataset(file) as ds:
+			year = ds.attrs.get("Year", None)
+			month = ds.attrs.get("Month", None)
+
+			if year is None or month is None:
+				print(f"Skipping file {file} due to missing date info")
+				continue
+
+			date_key = f"{year}-{str(month).zfill(2)}"
+
+			# Extract relevant data
+			lat = ds["latitude"].values
+			lon = ds["longitude"].values
+			sit = ds["sea_ice_thickness"].values
+			ifb = ds["sea_ice_freeboard"].values
+			
+			# Mask invalid data
+			mask = ~np.isnan(sit)
+
+			# Calculate sea ice draft
+			sid = sit - ifb
+
+			#lat = lat[mask]
+			#lon = lon[mask]
+			#sit = sit[mask]
+			#ifb = ifb[mask]
+			#sid = sid[mask]
+   
+   
+			# Append data as a dictionary for DataFrame conversion
+			data_list.append({
+				"date": date_key,
+				"latitude": lat,
+				"longitude": lon,
+				"sea_ice_thickness": sit,
+				"sea_ice_freeboard": ifb,
+				"sea_ice_draft": sid
+			})
+
+	# Convert to pandas DataFrame
+	cryosat_df = pd.DataFrame(data_list)
+
+	# Convert date column to datetime format for time-series operations
+	cryosat_df["date"] = pd.to_datetime(cryosat_df["date"])
+
+	return cryosat_df
+
+def get_smos(folder_path):
+	"""
+	Reads SMOS (Soil Moisture and Ocean Salinity) data from NetCDF files in the specified folder 
+	and extracts relevant information into a pandas DataFrame for easier time-series analysis.
+
+	Parameters
+	----------
+	folder_path : str
+		The path to the folder containing SMOS NetCDF files.
+
+	Returns
+	-------
+	pd.DataFrame
+		A DataFrame where each row corresponds to a unique timestamp and contains the following columns:
+		- **date** (str): Date in "YYYY-MM-DD" format.
+		- **latitude** (numpy.ndarray): 2D array of latitude values.
+		- **longitude** (numpy.ndarray): 2D array of longitude values.
+		- **sea_ice_thickness** (numpy.ndarray): 2D array of sea ice thickness values.
+		- **sea_ice_draft** (numpy.ndarray): 2D array of sea ice draft values.
+
+	Notes
+	-----
+	- The function expects NetCDF files to have a `date` attribute in the format `"YYYY-MM-DD"`.
+	- If a file lacks the `date` attribute, it is skipped with a warning message.
+	- The extracted data is assumed to be stored under the variable names `"mean_ice_thickness"` 
+	  and `"sea_ice_draft"` within the NetCDF file.
+
+	Examples
+	--------
+	>>> smos_df = get_smos("/path/to/smos/data")
+	>>> print(smos_df.head())  # Displays first few rows of the dataset
+	"""
+	smos_files = glob.glob(os.path.join(folder_path, "*.nc"))
+	data_list = []
+
+	for file in smos_files:
+		with xr.open_dataset(file) as ds:
+			date = ds.attrs.get("date", None)
+
+			if date is None:
+				print(f"Skipping file {file} due to missing date info")
+				continue
+
+			lat = ds["latitude"].values
+			lon = ds["longitude"].values
+			sit = ds["mean_ice_thickness"].values
+			sit_un = ds["uncertainty"].values
+			sid = ds["sea_ice_draft"].values
+			
+			#mask = ~np.isnan(sit)
+			#lat = lat[mask]
+			#lon = lon[mask]
+			#sit = sit[mask]
+			#sit_un = sit_un[mask]
+			#sid = sid[mask]
+   
+			# mask out values == 0.0
+			#mask = sit == 0.0
+			#lat = lat[~mask]
+			#lon = lon[~mask]
+			#sit = sit[~mask]
+			#sit_un = sit_un[~mask]
+			#sid = sid[~mask]
+
+			# Append data as a dictionary (structured for pandas)
+			data_list.append({
+				"date": date,
+				"latitude": lat,
+				"longitude": lon,
+				"sea_ice_thickness": sit,
+				"uncertainty": sit_un,
+				"sea_ice_draft": sid
+			})
+
+	# Convert list of dictionaries to a DataFrame
+	smos_df = pd.DataFrame(data_list)
+
+	# Convert date column to datetime format for time-series operations
+	smos_df["date"] = pd.to_datetime(smos_df["date"])
+
+	return smos_df
+   
+cryosat_df = get_cyro(cs_uit_folder)
+smos_df = get_smos(smos_folder)
+
+def reprojecting(lon, lat, proj=ccrs.NorthPolarStereo()):
+	"""
+	Reprojects given latitude and longitude coordinates to the specified projection.
+	
+	Parameters
+	----------
+	lon : float, list, or numpy.ndarray
+		Longitude values (single value, list, or 2D NumPy array).
+	lat : float, list, or numpy.ndarray
+		Latitude values (single value, list, or 2D NumPy array).
+	proj : cartopy.crs.Projection, optional
+		The target projection. Default is North Polar Stereographic.
+	
+	Returns
+	-------
+	x, y : numpy.ndarray
+		Transformed x and y coordinates in the new projection.
+	"""
+	# Convert inputs to numpy arrays (ensures compatibility for all cases)
 	lon = np.array(lon)
 	lat = np.array(lat)
 
-	# Create a figure and an axis with a polar projection
-	fig = plt.figure(figsize=(10, 10))
-	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
-	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
+	# Flatten any multi-dimensional input to avoid shape errors
+	lon_flat = lon.flatten()
+	lat_flat = lat.flatten()
+	# Perform the coordinate transformation
+	transformer = proj.transform_points(ccrs.PlateCarree(), lon_flat, lat_flat)
+	
+	# Extract transformed x, y coordinates
+	x_flat = transformer[:, 0]
+	y_flat = transformer[:, 1]
+	x = x_flat.reshape(lon.shape)
+	y = y_flat.reshape(lat.shape)
 
-	# Plot the sea ice thickness using scatter (for irregular grid)
-	sc = ax.scatter(lon, lat, c=si_thickness, cmap='viridis', vmin=0, vmax=1, transform=ccrs.PlateCarree(), zorder=1)
-	
-	ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
-	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
-	ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5, zorder=4)
-	
-	# Add a colorbar
-	cbar = plt.colorbar(sc, orientation='vertical')
-	cbar.set_label('Sea Ice Thickness (m)')
-	
-	plt.title('Sea Ice Thickness RAW')
-	plt.show()
-
-plot_data_oib(oib_lon, oib_lat, oib_sit)
-
-def plot_cryo_oib(oib_lat, oib_lon, oib_sit, cs_lat, cs_lon, cs_sit):
-	# Convert lon and lat to NumPy arrays if they are lists
-	oib_lon = np.array(oib_lon)
-	oib_lat = np.array(oib_lat)
-
-	# Create a figure and an axis with a polar projection
-	fig = plt.figure(figsize=(10, 10))
-	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
-	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
-
-	# Plot the sea ice thickness using scatter (for irregular grid)
-	sc = ax.scatter(oib_lon, oib_lat, c=oib_sit, cmap='viridis', vmin=0, vmax=1, transform=ccrs.PlateCarree(), zorder=1)
-	mesh = ax.pcolormesh(cs_lon, cs_lat, cs_sit, transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1, zorder=0)
-	
-	ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
-	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
-	ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5, zorder=4)
-	
-	# Add a colorbar
-	cbar = plt.colorbar(sc, orientation='vertical')
-	cbar.set_label('Sea Ice Thickness [m]')
-	
-	plt.title('OiB and CS Sea Ice Thickness RAW')
-	plt.show()
- 
-def plot_smos_oib(oib_lat, oib_lon, oib_sit, smos_lat, smos_lon, smos_sit):
-	# Convert lon and lat to NumPy arrays if they are lists
-	oib_lon = np.array(oib_lon)
-	oib_lat = np.array(oib_lat)
-	#cs_lon = np.array(cs_lon)
-	#cs_lat = np.array(cs_lat)
-
-	# Create a figure and an axis with a polar projection
-	fig = plt.figure(figsize=(10, 10))
-	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
-	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
-
-	# Plot the sea ice thickness using scatter (for irregular grid)
-	sc = ax.scatter(oib_lon, oib_lat, c=oib_sit, cmap='viridis', vmin=0, vmax=1, transform=ccrs.PlateCarree(), zorder=1)
-	mesh = ax.pcolormesh(smos_lon, smos_lat, smos_sit, transform=ccrs.PlateCarree(), cmap='viridis', vmin=0, vmax=1, zorder=0)
-	
-	ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
-	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
-	ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5, zorder=4)
-	
-	# Add a colorbar
-	cbar = plt.colorbar(sc, orientation='vertical')
-	cbar.set_label('Sea Ice Thickness (m)')
-	
-	plt.title('OiB and SMOS Sea Ice Thickness RAW')
-	plt.show()
- 
- 
-def hist_cryo_smos_oib(cryo_sit, smos_sit, oib_sit):
-	cryo_sit = cryo_sit.flatten()
-	smos_sit = smos_sit.flatten()
-	
-	# Create histogram
-	plt.hist(oib_sit, bins=100, alpha=0.5, color='green', label='OIB Thickness')
-	plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
-	plt.hist(smos_sit, bins=100, alpha=0.5, color='red', label='SMOS')
-	
-	# Labels and title
-	plt.xlabel("Sea Ice Thickness [m]")
-	plt.ylabel("Frequency")
-	plt.title("Histogram: Comparison of CryoSat-2 and SMOS Thickness with OIB RAW")
-	plt.legend()
-	plt.grid(True, linestyle="--", alpha=0.5)
-	plt.show()
-
-# ----------------------- Product processing ----------------------- #
-
-# https://nsidc.org/data/user-resources/help-center/guide-nsidcs-polar-stereographic-projection
-def reproject_to_epsg3413(lon, lat):
-	"""Convert lat/lon to EPSG:3413 (meters)."""
-	proj_latlon = Proj(proj="latlong", datum="WGS84")
-	proj_stereo = Proj("epsg:3413")
-	transformer = Transformer.from_proj(proj_latlon, proj_stereo, always_xy=True)
-	x, y = transformer.transform(lon, lat)
 	return x, y
 
-x_oib, y_oib = reproject_to_epsg3413(oib_lon, oib_lat)
-x_cryo, y_cryo = reproject_to_epsg3413(cryo_lon, cryo_lat)
-x_smos, y_smos = reproject_to_epsg3413(smos_lon, smos_lat)
 
-# ----------------------- Interpolation Methods ----------------------- #
+# project the mooring coordinates to polarstereo
+mooring_a_x, mooring_a_y = reprojecting(MOORING_A_LON, MOORING_A_LAT)
+mooring_b_x, mooring_b_y = reprojecting(MOORING_B_LON, MOORING_B_LAT)
+mooring_d_x, mooring_d_y = reprojecting(MOORING_D_LON, MOORING_D_LAT)
 
-def interpolating_to_cryo(source_x, source_y, sit_data, target_x, target_y):
-	"""Interpolate to CryoSat-2 grid."""
-	source_x = source_x.flatten() 
-	source_y = source_y.flatten()
-	source_sit = sit_data.flatten()
-	interpolated_sit = griddata((source_x, source_y), source_sit, (target_x, target_y), method='nearest') 
-	return interpolated_sit  # Return interpolated values at target locations for sea ice thickness data 
 
-def idw_interpolation_gpt(x_source, y_source, values_source, x_target, y_target, power=2, k=5):
-	"""Perform Inverse Distance Weighting (IDW) interpolation.
+# project the all satellite coordinates to polarstereo
+lon_cs = np.array([np.array(l) for l in cryosat_df["longitude"].values])
+lat_cs = np.array([np.array(l) for l in cryosat_df["latitude"].values])
+lon_cs = np.vstack(lon_cs)
+lat_cs = np.vstack(lat_cs)
+cryosat_x, cryosat_y = reprojecting(lon_cs, lat_cs)
 
-	Args:
-		x_source, y_source: Source coordinates (e.g., OIB)
-		values_source: Source values (e.g., OIB thickness).
-		x_target, y_target: Target coordinates (e.g., SMOS).
-		power: Power parameter for IDW (default=2).
-		k: Number of nearest neighbors to use (default=5).
+lon_smos = np.array([np.array(l) for l in smos_df["longitude"].values])
+lat_smos = np.array([np.array(l) for l in smos_df["latitude"].values])
+lon_smos = np.vstack(lon_smos)
+lat_smos = np.vstack(lat_smos)
+smos_x, smos_y = reprojecting(lon_smos, lat_smos)
 
-	Returns:
-		Interpolated values at target locations.
+#print("cryosat_x shape:", cryosat_x.shape, "cryosat_y shape:", cryosat_y.shape)
+#print("cryo_sid shape:", cryosat_df["sea_ice_draft"].shape)
+#print("cryosat_df shape:", cryosat_df.shape)
+#print("smos_x shape:", smos_x.shape, "smos_y shape:", smos_y.shape)
+#print("smos_sid shape:", smos_df["sea_ice_draft"].shape)
+#print("smos_df shape:", smos_df.shape)
+
+
+def identify_cells_df(df, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
 	"""
-	# Remove NaN values from source data
-	mask = ~np.isnan(values_source)
-	x_source, y_source, values_source = x_source[mask], y_source[mask], values_source[mask]
-
-	# Build KDTree from source points
-	tree = cKDTree(np.c_[x_source, y_source])
-
-	# Query the k nearest neighbors for target points
-	dists, idxs = tree.query(np.c_[x_target, y_target], k=k)
-
-	# Avoid division by zero (if distance is very small, set to a small value)
-	dists = np.maximum(dists, 1e-10)
-
-	# Compute IDW weights
-	weights = 1.0 / dists**power
-	weights /= weights.sum(axis=1, keepdims=True)  # Normalize weights
-
-	# Compute weighted sum of values
-	interpolated_values = np.sum(weights * values_source[idxs], axis=1)
-
-	return interpolated_values
-
-def idw_interpolation_uit(x_known, y_known, values_known, x_target, y_target, power=2, k=2):
+	Identify satellite grid cells within a specified search radius of a mooring for each month,
+	and compute statistics (mean, median, std, min, max) of sea ice draft for that month.
+	
+	This function assumes that each row in the DataFrame `df` contains:
+	  - "longitude": a 2D array of longitude values,
+	  - "latitude": a 2D array of latitude values,
+	  - "sea_ice_draft": a 2D array of sea ice draft values.
+	
+	Parameters
+	----------
+	df : pd.DataFrame
+		DataFrame where each row corresponds to a month (or time step) and contains
+		the satellite grid data.
+	mooring_x : float
+		Mooring x coordinate (projected to the same coordinate system as the satellite grid).
+	mooring_y : float
+		Mooring y coordinate.
+	search_radius : float, optional
+		Search radius (in same units as x/y coordinates), default is 200e3.
+		
+	Returns
+	-------
+	pd.DataFrame
+		A DataFrame with one row per time step containing:
+		 - date
+		 - mean_draft
+		 - median_draft
+		 - std_draft
+		 - min_draft
+		 - max_draft
 	"""
-	Perform Inverse Distance Weighting interpolation.
-	
-	Parameters:
-	- x_known, y_known: Coordinates of known data points.
-	- values_known: Values at known data points.
-	- x_target, y_target: Coordinates of target points where interpolation is desired.
-	- power: Power parameter for IDW (default is 2).
-	
-	Returns:
-	- Interpolated values at target points.
-	"""
-	# Create KDTree for known points
-	tree = cKDTree(np.c_[x_known, y_known])
-	
-	# Query the tree for nearest neighbors
-	distances, indices = tree.query(np.c_[x_target, y_target], k=k)
-	
-	# Calculate weights using inverse distance
-	weights = 1 / np.where(distances == 0, np.inf, distances**power)
-	
-	# Handle division by zero for weights
-	weights_sum = np.sum(weights, axis=1)
-	weights_sum[weights_sum == 0] = np.nan  # Avoid division by zero
-	
-	# Calculate interpolated values
-	interpolated_values = np.sum(weights * values_known[indices], axis=1) / weights_sum
-	return interpolated_values 
-
-interpolated_oib_sit = interpolating_to_cryo(np.array(x_oib), np.array(y_oib), np.array(oib_sit), x_cryo, y_cryo)
-interpolated_smos_sit = interpolating_to_cryo(x_smos, y_smos, smos_sit, x_cryo, y_cryo)
-print("Interpolated OiB SIT shape:", interpolated_oib_sit.shape)
-
-""" idw_interp_oib_sit = idw_interpolation_gpt(
-	np.array(x_oib), np.array(y_oib), np.array(oib_sit),
-	x_cryo.flatten(), y_cryo.flatten()
-) """
-
-""" idw_interp_smos_sit = idw_interpolation_gpt(
-	x_smos, y_smos, smos_sit[0,:,:],
-	x_cryo.flatten(), y_cryo.flatten()
-) """
-
-""" idw_interp_oib_sit_uit = idw_interpolation_uit(np.array(x_oib), np.array(y_oib), np.array(oib_sit), x_cryo.flatten(), y_cryo.flatten())
-idw_interp_smos_sit_uit = idw_interpolation_uit(x_smos.flatten(), y_smos.flatten(), smos_sit[0,:,:].flatten(), x_cryo.flatten(), y_cryo.flatten()) """
-
-def mapping_xy(x_cryo, y_cryo, x_source, y_source):
-	# Check if x_cryo and y_cryo are 2D arrays and need to be flattened
-	if x_source.ndim == 2 and y_source.ndim == 2:
-		x_source = x_source.flatten()
-		y_source = y_source.flatten()
-	else: 
-		pass
-	
-	cryo_tree = cKDTree(np.column_stack((x_cryo.flatten(), y_cryo.flatten())))
-
-	mapped_source_coords = []
- 
-	for x, y in zip(x_source, y_source):
-		dist, index = cryo_tree.query([x, y], k=1)
-		mapped_source_coords.append((x_cryo.flatten()[index], y_cryo.flatten()[index]))
-	
-	return np.array(mapped_source_coords) # Return list of (x, y) for valid points
-
-mapped_oib_coords = mapping_xy(x_cryo, y_cryo, np.array(x_oib), np.array(y_oib))
-mapped_smos_coords = mapping_xy(x_cryo, y_cryo, x_smos, y_smos)
-
-print("Mapped OIB coords shape: ", mapped_oib_coords.shape)
-print("Mapped SMOS coords shape: ", mapped_smos_coords.shape)
-
-x_oib_mapped = mapped_oib_coords[:, 0]
-y_oib_mapped = mapped_oib_coords[:, 1]
-
-print("Mapped OIB x shape: ", x_oib_mapped.shape)
-print("Mapped OIB y shape: ", y_oib_mapped.shape)
-
-x_smos_mapped = mapped_smos_coords[:, 0]
-y_smos_mapped = mapped_smos_coords[:, 1]
-
-print("Mapped SMOS x shape: ", x_smos_mapped.shape)
-print("Mapped SMOS y shape: ", y_smos_mapped.shape)
-
-# ----------------------- Interp Histograms ----------------------- #
-
-def histogram(interp_oib, interp_smos, cryo_sit):
-	# Flatten the data
-	interp_oib = interp_oib.flatten()
-	interp_smos = interp_smos.flatten()
-	cryo_sit = cryo_sit.flatten()
-
-	# Create histogram
-	plt.hist(interp_oib, bins=100, alpha=0.5, color='green', label='Interpolated OIB Thickness')
-	plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
-	plt.hist(interp_smos, bins=100, alpha=0.5, color='red', label='Interpolated SMOS')
-	
-	# Labels and title
-	plt.xlabel("Sea Ice Thickness [m]")
-	plt.ylabel("Frequency")
-	plt.title("Histogram: Comparison of CryoSat-2 and SMOS Thickness with Interpolated OIB")
-	plt.legend()
-	plt.grid(True, linestyle="--", alpha=0.5)
-	plt.show()
- 
-def idw_histogram(interp_oib, interp_smos, cryo_sit):
-	interp_oib = interp_oib.flatten()
-	interp_smos = interp_smos.flatten()
-	cryo_sit = cryo_sit.flatten()
-	
-	# Create histogram
-	plt.hist(interp_oib, bins=100, alpha=0.5, color='green', label='OIB')
-	plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
-	plt.hist(interp_smos, bins=100, alpha=0.5, color='red', label='SMOS')
-	
-	# Labels and title
-	plt.xlabel("Sea Ice Thickness [m]")
-	plt.ylabel("Frequency")
-	plt.title("Histogram: Comparison of CryoSat-2 with IDW Interpolated OIB and SMOS")
-	plt.legend()
-	plt.grid(True, linestyle="--", alpha=0.5)
-	plt.show()
-	
-def idw_histogram_uit(interp_oib, interp_smos, cryo_sit):
-	interp_oib = interp_oib.flatten()
-	interp_smos = interp_smos.flatten()
-	cryo_sit = cryo_sit.flatten()
-	
-	# Create histogram
-	plt.hist(interp_oib, bins=100, alpha=0.5, color='green', label='OIB')
-	plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='CryoSat-2')
-	plt.hist(interp_smos, bins=100, alpha=0.5, color='red', label='SMOS')
-	
-	# Labels and title
-	plt.xlabel("Sea Ice Thickness [m]")
-	plt.ylabel("Frequency")
-	plt.title("Histogram: Comparison of CryoSat-2 with IDW Interpolated OIB and SMOS")
-	plt.legend()
-	plt.grid(True, linestyle="--", alpha=0.5)
-	plt.show()
-	
-# ---------------------------------------------- # 
-""" 
-The following functions finds the Cryosat-2 data and smos data grid points that are below 1m, 
-for so making an 25km diameter circle around the grid point and then finds the OIB data points that are within the circle. 
-Than averages the OiB data points within the circle, and if the average is below 1m it is stored else it is discarded.
-	- Done by using cKDTree to find the nearest neighbors.
-"""
-
- 
-def filter_and_average_oib_cryo(cryo_x, cryo_y, cryo_sit, oib_x, oib_y, oib_sit, radius=12500):
-	"""
-	Filters CryoSat-2 and SMOS data for points below 1m SIT, finds OIB points within 25 km, 
-	and averages them if the mean is also below 1m.
-	
-	Parameters:
-		cryo_x, cryo_y: CryoSat-2 grid coordinates (meters, Polar Stereographic).
-		cryo_sit: CryoSat-2 sea ice thickness data.
-		smos_sit: SMOS sea ice thickness data.
-		oib_x, oib_y: OIB grid coordinates (meters, Polar Stereographic).
-		oib_sit: OIB sea ice thickness data.
-		radius: Search radius in meters (default: 25000m or 25km).
-	
-	Returns:
-		List of (x, y, avg_OIB_SIT) for valid points.
-	"""
-
-	# 1. Identify CryoSat-2 & SMOS points with SIT < 1m
-	mask = (cryo_sit < 1) 
-	cryo_filtered_x = cryo_x[mask]
-	cryo_filtered_y = cryo_y[mask]
-
-	# 2. Build a KDTree using OIB coordinates
-	oib_tree = cKDTree(np.column_stack((oib_x, oib_y)))
-	
 	results = []
+	
+	# Loop over each month (row) in the DataFrame
+	for idx, row in df.iterrows():
+		# Reproject the grid for this month
+		# (if the row already contains reprojected coordinates, you can use them directly)
+		x_grid, y_grid = reprojecting(row["longitude"], row["latitude"])
+		
+		# Flatten the grids to get a list of grid cell coordinates (n_points x 2)
+		points = np.column_stack((x_grid.flatten(), y_grid.flatten()))
+		tree = cKDTree(points)
+		
+		# Find indices of grid cells within the search radius of the mooring point
+		indices = tree.query_ball_point([mooring_x, mooring_y], r=search_radius)
+		
+		# Extract the sea ice draft for this month and flatten
+		sid_grid = row["sea_ice_draft"]
+		sid_values = sid_grid.flatten()[indices]
+		
+		# Remove NaNs from the draft values
+		sid_valid = sid_values[~np.isnan(sid_values)]
+		
+		if len(sid_valid) > 0:
+			stats = {
+				"mean_draft": np.mean(sid_valid),
+				"median_draft": np.median(sid_valid),
+				"std_draft": np.std(sid_valid),
+				"min_draft": np.min(sid_valid),
+				"max_draft": np.max(sid_valid)
+			}
+		else:
+			stats = {
+				"mean_draft": np.nan,
+				"median_draft": np.nan,
+				"std_draft": np.nan,
+				"min_draft": np.nan,
+				"max_draft": np.nan
+			}
+		
+		stats["date"] = row["date"]  # assuming the date column exists in df
+		results.append(stats)
+		
+	return pd.DataFrame(results)
 
-	# 3. Find OIB points within the radius for each CryoSat-2 point
-	for x, y in zip(cryo_filtered_x, cryo_filtered_y):
-		indices = oib_tree.query_ball_point([x, y], radius)
+cryosat_stats_A = identify_cells_df(cryosat_df, mooring_a_x, mooring_a_y)
+cryosat_stats_B = identify_cells_df(cryosat_df, mooring_b_x, mooring_b_y)
+cryosat_stats_D = identify_cells_df(cryosat_df, mooring_d_x, mooring_d_y)
 
-		# 4. Ensure indices are within valid range
-		valid_indices = [i for i in indices if i < len(oib_sit)]
-		if valid_indices:
-			nearby_oib_sit = oib_sit[valid_indices]
-			avg_oib_sit = np.mean(nearby_oib_sit)
+smos_stats_A = identify_cells_df(smos_df, mooring_a_x, mooring_a_y)
+smos_stats_B = identify_cells_df(smos_df, mooring_b_x, mooring_b_y)
+smos_stats_D = identify_cells_df(smos_df, mooring_d_x, mooring_d_y)
 
-			# 5. Store only if avg OIB SIT < 1m
-			if avg_oib_sit < 1:
-				results.append((x, y, avg_oib_sit))
+def time_series(cryosat_stats, smos_stats, mooring_stats):
+	# times series for cryosat, smos and mooring data 
+	# create a time series plot for the mean sea ice draft for each mooring with the included mooring data 
+	# with the mean sea ice draft for each month on the y-axis and the date on the x-axis
+	
+	# Ensure the date columns are datetime objects
+	cryosat_stats["date"] = pd.to_datetime(cryosat_stats["date"])
+	smos_stats["date"] = pd.to_datetime(smos_stats["date"])
+	mooring_stats["date"] = pd.to_datetime(mooring_stats["date"])
+	
+	# Sort by date to ensure proper plotting
+	cryosat_stats.sort_values("date", inplace=True)
+	smos_stats.sort_values("date", inplace=True)
+	mooring_stats.sort_values("date", inplace=True)
+	
+	# Create the plot
+	plt.figure(figsize=(12, 6))
+	
+	plt.plot(mooring_stats["date"], mooring_stats["mean_draft"], label="Mooring", color="black", zorder=0)
+	plt.scatter(cryosat_stats["date"], cryosat_stats["mean_draft"], label="CryoSat-2", color="blue", zorder=1, s=10)
+	plt.scatter(smos_stats["date"], smos_stats["mean_draft"], label="SMOS", color="orange", zorder=2, s=10)
+	#plt.plot(cryosat_stats["date"], cryosat_stats["mean_draft"], label="CryoSat-2", zorder=1)
+	#plt.plot(smos_stats["date"], smos_stats["mean_draft"], label="SMOS", zorder=2)
+	
+	
+	# Set plot labels and title
+	plt.xlabel("Date")
+	plt.ylabel("Mean Sea Ice Draft (m)")
+	plt.title("Monthly Mean Sea Ice Draft Time Series")
+	plt.legend()
+	
+	# Improve the x-axis date formatting
+	plt.gcf().autofmt_xdate()
+	plt.grid(True)
+	plt.tight_layout()
+	plt.show()
 
-	return results # Return list of (x, y, avg_OIB_SIT) for valid points
-
-
-def filter_and_average_oib_smos(smos_x, smos_y, smos_sit, oib_x, oib_y, oib_sit, radius=12500):
-    """
-    Filters SMOS data for points below 1m SIT, finds OIB points within 25 km, 
-    and averages them if the mean OIB SIT is also below 1m.
-
-    Parameters:
-        smos_x, smos_y: SMOS grid coordinates (meters, Polar Stereographic).
-        smos_sit: SMOS sea ice thickness data.
-        oib_x, oib_y: OIB grid coordinates (meters, Polar Stereographic).
-        oib_sit: OIB sea ice thickness data.
-        radius: Search radius in meters (default: 12500m or 25km).
-
-    Returns:
-        List of (x, y, avg_OIB_SIT) for valid SMOS points.
-    """
-
-    # 1. Identify SMOS points with SIT < 1m
-    mask = (smos_sit < 1)
-    smos_filtered_x = smos_x[mask]
-    smos_filtered_y = smos_y[mask]
-
-    # 2. Build a KDTree using OIB coordinates
-    oib_tree = cKDTree(np.column_stack((oib_x, oib_y)))
-
-    results = []
-
-    # 3. Find OIB points within the radius for each SMOS point
-    for x, y in zip(smos_filtered_x, smos_filtered_y):
-        indices = oib_tree.query_ball_point([x, y], radius)
-
-        # 4. Extract valid OIB SIT values
-        valid_indices = [i for i in indices if i < len(oib_sit)]
-        if valid_indices:
-            nearby_oib_sit = oib_sit[valid_indices]
-            avg_oib_sit = np.mean(nearby_oib_sit)
-
-            # 5. Store only if avg OIB SIT < 1m
-            if avg_oib_sit < 1:
-                results.append((x, y, avg_oib_sit))
-
-    return results
-
-interpolated_oib_sit = interpolated_oib_sit.flatten()
-oib_cryo_filtered = filter_and_average_oib_cryo(x_cryo, y_cryo, cryo_sit, x_oib_mapped, y_oib_mapped, interpolated_oib_sit)
-oib_smos_filtered = filter_and_average_oib_smos(x_smos_mapped, y_smos_mapped, interpolated_smos_sit, x_oib_mapped, y_oib_mapped, interpolated_oib_sit)
-
-
-#print(filter_and_average_oib(x_cryo, y_cryo, cryo_sit, np.array(x_oib), np.array(y_oib), interpolated_oib_sit))
+def times_series_all():
+	monthly_stats_A["date"] = pd.to_datetime(monthly_stats_A["date"])
+	monthly_stats_B["date"] = pd.to_datetime(monthly_stats_B["date"])
+	monthly_stats_D["date"] = pd.to_datetime(monthly_stats_D["date"])
+	
+	cryosat_stats_A["date"] = pd.to_datetime(cryosat_stats_A["date"])
+	cryosat_stats_B["date"] = pd.to_datetime(cryosat_stats_B["date"])
+	cryosat_stats_D["date"] = pd.to_datetime(cryosat_stats_D["date"])
  
+	smos_stats_A["date"] = pd.to_datetime(smos_stats_A["date"])
+	smos_stats_B["date"] = pd.to_datetime(smos_stats_B["date"])	
+	smos_stats_D["date"] = pd.to_datetime(smos_stats_D["date"])
  
-#plot_cryo_oib(oib_lat, oib_lon, oib_sit, cryo_lat, cryo_lon, cryo_sit)
-#plot_smos_oib(oib_lat, oib_lon, oib_sit, smos_lat, smos_lon, smos_sit[0,:,:])
+	
 
-#histogram(interpolated_oib_sit, interpolated_smos_sit, cryo_sit)
-#idw_histogram(idw_interp_oib_sit, idw_interp_smos_sit, cryo_sit)
-#idw_histogram_uit(idw_interp_oib_sit_uit, idw_interp_smos_sit_uit, cryo_sit)
-
-#plot_data_oib(oib_lon, oib_lat, oib_sit)
+time_series(cryosat_stats_A, smos_stats_A, monthly_stats_A)

@@ -3,9 +3,7 @@ from scipy.spatial import cKDTree
 import matplotlib.pyplot as plt
 from cartopy import crs as ccrs, feature as cfeature
 import netCDF4 as nc
-from  scipy.interpolate import griddata
 import pandas as pd
-from pyproj import Proj, Transformer, transform
 import cartopy.crs as ccrs
 import seaborn as sns
 from mpl_toolkits.basemap import Basemap
@@ -48,7 +46,7 @@ oib_paths_2011 = [
 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2011\IDCSI4_20110328.txt"
 ]
 
-smos_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_mean_thickness.nc"
+smos_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2013\2013_march_mean_thickness.nc"
 
 cryo_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product\uit_cryosat2_L3_EASE2_nh25km_2013_03_v3.nc"
 
@@ -124,7 +122,6 @@ oib_lat, oib_lon, oib_sit, oib_sit_un = extract_all_oib(oib_paths_2013)
 oib_lat, oib_lon, oib_sit, oib_sit_un = np.array(oib_lat), np.array(oib_lon), np.array(oib_sit), np.array(oib_sit_un)
 smos_lat, smos_lon, smos_sit, smos_sit_un = get_smos(smos_path)
 cryo_lat, cryo_lon, cryo_sit, cryo_sit_un = get_cryo(cryo_path)
-
 print('OIB:', oib_lat.shape, oib_lon.shape, oib_sit.shape)
 print('SMOS:', smos_lat.shape, smos_lon.shape, smos_sit.shape)
 print('Cryo:', cryo_lat.shape, cryo_lon.shape, cryo_sit.shape)
@@ -525,9 +522,9 @@ def differences(cryo_sit, smos_sit, oib_sit):
  
 
 if __name__ == "__main__":
-	plot_fligth_paths(x_cryo, y_cryo, oib_paths_2011, oib_paths_2012, oib_paths_2013)	
+	#lot_fligth_paths(x_cryo, y_cryo, oib_paths_2011, oib_paths_2012, oib_paths_2013)	
  
- 	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, cryo_sit, 'CryoSat-2 vs OiB')
+ 	plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, cryo_sit, 'CryoSat-2 vs OiB')
 	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, resampled_smos_sit, 'SMOS vs OiB') 
 	#pair_scatter_plot(resampled_oib_sit, cryo_sit)
 	#scatter_oib_cryo_pair(x_cryo, y_cryo, cryo_sit, resampled_oib_sit)

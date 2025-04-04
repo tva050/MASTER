@@ -7,7 +7,7 @@ import netCDF4 as nc
 from scipy.interpolate import griddata
 from netCDF4 import Dataset
 
-oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product\uit_cryosat2_L3_EASE2_nh25km_2012_10_v3.nc"
+oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product\uit_cryosat2_L3_EASE2_nh25km_2012_03_v3.nc"
 nov_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_11_v3.nc"
 dec_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_12_v3.nc"
 
@@ -163,9 +163,10 @@ def box_plot():
 
 if __name__ == "__main__":
     lat, lon, si_thickness = get_data(oct_path)
-    print_nc_metadata(oct_path)
+    #print_nc_metadata(oct_path)
+    print(si_thickness)
     #write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness)
-    #single_figure(lat, lon, si_thickness)
+    single_figure(lat, lon, si_thickness)
     #single_figure(filtered_lat, filtered_lon, filtered_si_thickness)
     #zoomed_figure(filtered_lat, filtered_lon, filtered_si_thickness, filtered_si_thickness_uncertainty)
     #compare_months_LARM(oct_path, nov_path, dec_path)
