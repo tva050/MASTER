@@ -167,4 +167,4 @@ def print_nc_metadata(file_path):
             for attr in var.ncattrs():
                 print(f"  {attr}: {var.getncattr(attr)}")
                 
-print_nc_metadata(month_path)
+#print_nc_metadata(month_path)
