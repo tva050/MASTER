@@ -349,12 +349,12 @@ lon_smos = np.vstack(lon_smos)
 lat_smos = np.vstack(lat_smos)
 smos_x, smos_y = reprojecting(lon_smos, lat_smos)
 
-print("cryosat_x shape:", cryosat_x.shape, "cryosat_y shape:", cryosat_y.shape)
-print("cryo_sid shape:", cryosat_df["sea_ice_draft"].shape)
-print("cryosat_df shape:", cryosat_df.shape)
-print("smos_x shape:", smos_x.shape, "smos_y shape:", smos_y.shape)
-print("smos_sid shape:", smos_df["sea_ice_draft"].shape)
-print("smos_df shape:", smos_df.shape)
+#print("cryosat_x shape:", cryosat_x.shape, "cryosat_y shape:", cryosat_y.shape)
+#print("cryo_sid shape:", cryosat_df["sea_ice_draft"].shape)
+#print("cryosat_df shape:", cryosat_df.shape)
+#print("smos_x shape:", smos_x.shape, "smos_y shape:", smos_y.shape)
+#print("smos_sid shape:", smos_df["sea_ice_draft"].shape)
+#print("smos_df shape:", smos_df.shape)
 
 
 def identify_cells_df(df, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
