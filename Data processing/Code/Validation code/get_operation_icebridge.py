@@ -524,7 +524,7 @@ def differences(cryo_sit, smos_sit, oib_sit):
 if __name__ == "__main__":
 	#lot_fligth_paths(x_cryo, y_cryo, oib_paths_2011, oib_paths_2012, oib_paths_2013)	
  
- 	plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, cryo_sit, 'CryoSat-2 vs OiB')
+ 	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, cryo_sit, 'CryoSat-2 vs OiB')
 	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, resampled_smos_sit, 'SMOS vs OiB') 
 	#pair_scatter_plot(resampled_oib_sit, cryo_sit)
 	#scatter_oib_cryo_pair(x_cryo, y_cryo, cryo_sit, resampled_oib_sit)
@@ -532,6 +532,6 @@ if __name__ == "__main__":
  	#hist_cryo_smos_oib(cryo_sit, resampled_oib_sit, resampled_smos_sit)
 	#boxplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
 	#barplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
-	#heatmap(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+	heatmap(cryo_sit, resampled_smos_sit, resampled_oib_sit)
 	#differences(cryo_sit, resampled_smos_sit, resampled_oib_sit)
  

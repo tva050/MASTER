@@ -344,15 +344,78 @@ lon_smos = np.vstack(lon_smos)
 lat_smos = np.vstack(lat_smos)
 smos_x, smos_y = reprojecting(lon_smos, lat_smos)
 
-#print("cryosat_x shape:", cryosat_x.shape, "cryosat_y shape:", cryosat_y.shape)
-#print("cryo_sid shape:", cryosat_df["sea_ice_draft"].shape)
-#print("cryosat_df shape:", cryosat_df.shape)
-#print("smos_x shape:", smos_x.shape, "smos_y shape:", smos_y.shape)
-#print("smos_sid shape:", smos_df["sea_ice_draft"].shape)
-#print("smos_df shape:", smos_df.shape)
+print("cryosat_x shape:", cryosat_x.shape, "cryosat_y shape:", cryosat_y.shape)
+print("cryo_sid shape:", cryosat_df["sea_ice_draft"].shape)
+print("cryosat_df shape:", cryosat_df.shape)
+print("smos_x shape:", smos_x.shape, "smos_y shape:", smos_y.shape)
+print("smos_sid shape:", smos_df["sea_ice_draft"].shape)
+print("smos_df shape:", smos_df.shape)
 
+def resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radius=12500):
+	""" 
+	Resample source data onto a new grid using weighted average based on uncertainty.
+	If no valid data, leave as NaN.
+	If no points are found in the radius, set to NaN.
+	"""
+	target_tree = cKDTree(np.column_stack([x_target.ravel(), y_target.ravel()]))  # Tree for faster lookup
 
-def identify_cells_df(df, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
+	# Initialize arrays to store resampled data and weight sums
+	resampled_sit = np.full(x_target.shape, np.nan)
+	weights_sum = np.zeros(x_target.shape)
+
+	# Flatten all arrays for iteration
+	source_sit = source_sit.ravel()
+	source_sit_un = source_sit_un.ravel()
+	x_source = x_source.ravel()
+	y_source = y_source.ravel()
+
+	for i in range(len(source_sit)):
+		if np.isnan(source_sit[i]) or np.isnan(source_sit_un[i]):
+			continue  # Skip invalid data points
+		
+		indices = target_tree.query_ball_point([x_source[i], y_source[i]], radius)
+
+		if not indices:
+			continue  # If no neighbors are found, skip
+
+		weight = 1 / source_sit_un[i] if source_sit_un[i] != 0 else 0  # Avoid division by zero
+
+		for idx in indices:
+			if idx >= x_target.size:  # Ensure valid index
+				continue
+			
+			row, col = np.unravel_index(idx, x_target.shape)
+
+			# Avoid operations on uninitialized values
+			if np.isnan(resampled_sit[row, col]):
+				resampled_sit[row, col] = 0
+
+			# Weighted sum calculation
+			resampled_sit[row, col] = (resampled_sit[row, col] * weights_sum[row, col] + source_sit[i] * weight) / (weights_sum[row, col] + weight)
+			weights_sum[row, col] += weight
+
+	# Mask invalid values (no data points found)
+	resampled_sit[weights_sum == 0] = np.nan
+
+	return np.ma.masked_invalid(resampled_sit)
+
+def resample_smos_to_cryo(smos_df, cryosat_x, cryosat_y, radius=12500):
+	resampled_mean = []
+ 
+	for idx, row in smos_df.iterrows():
+		x_source, y_source = reprojecting(row["longitude"], row["latitude"])
+		resampled_field = resample_to_cryo_grid(x_source, y_source, row["sea_ice_draft"], row["uncertainty"], cryosat_x, cryosat_y, radius)
+
+		mean_sit = np.nanmean(resampled_field)
+		resampled_mean.append(mean_sit)
+
+	smos_df["sea_ice_draft"] = resampled_mean
+	return smos_df
+
+smos_df = resample_smos_to_cryo(smos_df, cryosat_x, cryosat_y)
+print("resampled smos idf shape: ",smos_df["sea_ice_draft"].shape)
+  
+def identify_cells_df(df, cryo_x, cryo_y, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
 	"""
 	Identify satellite grid cells within a specified search radius of a mooring for each month,
 	and compute statistics (mean, median, std, min, max) of sea ice draft for that month.
@@ -391,7 +454,9 @@ def identify_cells_df(df, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
 	for idx, row in df.iterrows():
 		# Reproject the grid for this month
 		# (if the row already contains reprojected coordinates, you can use them directly)
-		x_grid, y_grid = reprojecting(row["longitude"], row["latitude"])
+		#x_grid, y_grid = reprojecting(row["longitude"], row["latitude"]) 
+		x_grid = cryo_x
+		y_grid = cryo_y
 		
 		# Flatten the grids to get a list of grid cell coordinates (n_points x 2)
 		points = np.column_stack((x_grid.flatten(), y_grid.flatten()))
@@ -429,13 +494,13 @@ def identify_cells_df(df, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
 		
 	return pd.DataFrame(results)
 
-cryosat_stats_A = identify_cells_df(cryosat_df, mooring_a_x, mooring_a_y)
-cryosat_stats_B = identify_cells_df(cryosat_df, mooring_b_x, mooring_b_y)
-cryosat_stats_D = identify_cells_df(cryosat_df, mooring_d_x, mooring_d_y)
+cryosat_stats_A = identify_cells_df(cryosat_df, cryosat_x, cryosat_y, mooring_a_x, mooring_a_y)
+cryosat_stats_B = identify_cells_df(cryosat_df, cryosat_x, cryosat_y, mooring_b_x, mooring_b_y)
+cryosat_stats_D = identify_cells_df(cryosat_df, cryosat_x, cryosat_y, mooring_d_x, mooring_d_y)
 
-smos_stats_A = identify_cells_df(smos_df, mooring_a_x, mooring_a_y)
-smos_stats_B = identify_cells_df(smos_df, mooring_b_x, mooring_b_y)
-smos_stats_D = identify_cells_df(smos_df, mooring_d_x, mooring_d_y)
+smos_stats_A = identify_cells_df(smos_df, cryosat_x, cryosat_y, mooring_a_x, mooring_a_y)
+smos_stats_B = identify_cells_df(smos_df, cryosat_x, cryosat_y, mooring_b_x, mooring_b_y)
+smos_stats_D = identify_cells_df(smos_df, cryosat_x, cryosat_y, mooring_d_x, mooring_d_y)
 
 mooring_A_draft = monthly_stats_A["mean_draft"]
 cryosat_A_draft = cryosat_stats_A["mean_draft"]
@@ -446,6 +511,8 @@ smos_B_draft = smos_stats_B["mean_draft"]
 mooring_D_draft = monthly_stats_D["mean_draft"]
 cryosat_D_draft = cryosat_stats_D["mean_draft"]
 smos_D_draft = smos_stats_D["mean_draft"]
+
+print("jupp nais")
 
 def times_series_all():
 	monthly_stats_A["date"] = pd.to_datetime(monthly_stats_A["date"])
@@ -611,13 +678,18 @@ def single_anomaly():
 	# Show plot
 	plt.show()
  
+def valid_mask(mooring_anomalies, satellite_anomalies):
+	valid_mask = (mooring_anomalies >= 0) & (mooring_anomalies <= 1) & (satellite_anomalies >= 0) & (satellite_anomalies <= 1)
+	mooring_anomalies = mooring_anomalies[valid_mask]
+	satellite_anomalies = satellite_anomalies[valid_mask]	
+	return mooring_anomalies, satellite_anomalies	
+ 
 def clean_and_stats(mooring_anomalies, satellite_anomalies):
 	valid_mask = (~np.isnan(mooring_anomalies)) & (~np.isnan(satellite_anomalies))
 	mooring_valid = mooring_anomalies[valid_mask]
 	satellite_valid = satellite_anomalies[valid_mask]
 	stats = statistics(mooring_valid, satellite_valid)
 	return mooring_valid, satellite_valid, stats
-
 
 def add_boxplot(ax, x_data, y_data, num_bins=8):
 	bins = np.linspace(x_data.min(), x_data.max(), num_bins + 1)
@@ -644,8 +716,8 @@ def add_boxplot(ax, x_data, y_data, num_bins=8):
 		median.set(color='darkred', linewidth=2)
 
 
-def plot_subplot(ax, x, y, reg_x, reg_y, stats, label):
-	ax.scatter(x, y, label=label, zorder=3)
+def plot_subplot(ax, x, y, reg_x, reg_y, stats, label, color, xlabel):
+	ax.scatter(x, y, label=label, zorder=3, color=color)
 	ax.plot(reg_x, reg_y, label="Regression", color="red", zorder=1)
 	add_boxplot(ax, x, y)
 
@@ -653,7 +725,7 @@ def plot_subplot(ax, x, y, reg_x, reg_y, stats, label):
 	upper = min(ax.get_xlim()[1], ax.get_ylim()[1])
 	ax.plot([lower, upper], [lower, upper], '--', color='gray', zorder=0)
 
-	ax.set_xlabel("Mooring Anomalies (m)")
+	ax.set_xlabel(xlabel)
 	ax.set_ylabel(f"{label} Anomalies (m)")
 	ax.legend()
 	ax.grid(True)
@@ -667,52 +739,65 @@ def plot_subplot(ax, x, y, reg_x, reg_y, stats, label):
 				  f"Slope: {slope:.2f}\n"
 				  f"Intercept: {intercept:.2f}")
 	ax.text(0.95, 0.05, stats_text, transform=ax.transAxes, fontsize=10,
-			ha='right', va='bottom')
+			ha='right', va='bottom', bbox=dict(facecolor='gray', alpha=0.5))
 
 
 def draft_anomalies():
 	# Calculate anomalies
-	mooring_A_anom = mooring_A_draft - np.nanmean(mooring_A_draft)
-	cryosat_A_anom = cryosat_A_draft - np.nanmean(cryosat_A_draft)
-	smos_A_anom = smos_A_draft - np.nanmean(smos_A_draft)
-	mooring_B_anom = mooring_B_draft - np.nanmean(mooring_B_draft)
-	cryosat_B_anom = cryosat_B_draft - np.nanmean(cryosat_B_draft)
-	smos_B_anom = smos_B_draft - np.nanmean(smos_B_draft)
-	mooring_D_anom = mooring_D_draft - np.nanmean(mooring_D_draft)
-	cryosat_D_anom = cryosat_D_draft - np.nanmean(cryosat_D_draft)
-	smos_D_anom = smos_D_draft - np.nanmean(smos_D_draft)
+	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
+	mooring_B_draft_C, cryosat_B_draft_c = valid_mask(mooring_B_draft, cryosat_B_draft)
+	mooring_D_draft_C, cryosat_D_draft_c = valid_mask(mooring_D_draft, cryosat_D_draft)
+ 
+	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
+	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
+	mooring_C_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
+ 
+	mooring_A_anom_c = mooring_A_draft_C - np.nanmean(mooring_A_draft_C)
+	cryosat_A_anom = cryosat_A_draft_c - np.nanmean(cryosat_A_draft_c)
+	mooring_B_anom_c = mooring_B_draft_C - np.nanmean(mooring_B_draft_C)
+	cryosat_B_anom = cryosat_B_draft_c - np.nanmean(cryosat_B_draft_c)
+	mooring_D_anom_c = mooring_D_draft_C - np.nanmean(mooring_D_draft_C)
+	cryosat_D_anom = cryosat_D_draft_c - np.nanmean(cryosat_D_draft_c)
 
-	fig, ax = plt.subplots(3, 2, figsize=(14, 14), sharex=True)
+	smos_A_anom = smos_A_draft_s - np.nanmean(smos_A_draft_s)
+	mooring_A_anom_s = mooring_A_draft_S - np.nanmean(mooring_A_draft_S)
+	smos_B_anom = smos_B_draft_s- np.nanmean(smos_B_draft_s)
+	mooring_B_anom_s = mooring_B_draft_S - np.nanmean(mooring_B_draft_S)
+	smos_D_anom = smos_D_draft_s - np.nanmean(smos_D_draft_s)
+	mooring_D_anom_s = mooring_C_draft_S - np.nanmean(mooring_C_draft_S)
 
-	# Mooring A
-	xA, yA, statsA = clean_and_stats(mooring_A_anom, cryosat_A_anom)
-	plot_subplot(ax[0, 0], xA, yA, statsA[0], statsA[1], statsA, "CryoSat-2")
-	ax[0, 0].set_title("Mooring A vs CryoSat-2")
+	fig, ax = plt.subplots(2, 3, figsize=(14, 14), sharex=True)
 
-	xA_smos, yA_smos, statsA_smos = clean_and_stats(mooring_A_anom, smos_A_anom)
-	plot_subplot(ax[0, 1], xA_smos, yA_smos, statsA_smos[0], statsA_smos[1], statsA_smos, "SMOS")
-	ax[0, 1].set_title("Mooring A vs SMOS")
+	# CryoSat-2
+	xA, yA, statsA = clean_and_stats(mooring_A_anom_c, cryosat_A_anom)
+	plot_subplot(ax[0, 0], xA, yA, statsA[0], statsA[1], statsA, "CryoSat-2", "teal", "")
+	ax[0, 0].set_title("BGEP Mooring A")
+ 
+	xB, yB, statsB = clean_and_stats(mooring_B_anom_c, cryosat_B_anom)
+	plot_subplot(ax[0, 1], xB, yB, statsB[0], statsB[1], statsB, "CryoSat-2", "teal", "")
+	ax[0, 1].set_title("BGEP Mooring B")
 
-	# Mooring B
-	xB, yB, statsB = clean_and_stats(mooring_B_anom, cryosat_B_anom)
-	plot_subplot(ax[1, 0], xB, yB, statsB[0], statsB[1], statsB, "CryoSat-2")
-	ax[1, 0].set_title("Mooring B vs CryoSat-2")
+	xD, yD, statsD = clean_and_stats(mooring_D_anom_c, cryosat_D_anom)
+	plot_subplot(ax[0, 2], xD, yD, statsD[0], statsD[1], statsD, "CryoSat-2", "teal", "")
+	ax[0, 2].set_title("BGEP Mooring D")
 
-	xB_smos, yB_smos, statsB_smos = clean_and_stats(mooring_B_anom, smos_B_anom)
-	plot_subplot(ax[1, 1], xB_smos, yB_smos, statsB_smos[0], statsB_smos[1], statsB_smos, "SMOS")
-	ax[1, 1].set_title("Mooring B vs SMOS")
+	# SMOS
+	xA_smos, yA_smos, statsA_smos = clean_and_stats(mooring_A_anom_s, smos_A_anom)
+	plot_subplot(ax[1, 0], xA_smos, yA_smos, statsA_smos[0], statsA_smos[1], statsA_smos, "SMOS", "mediumorchid", "Mooring Anomalies (m)")
+	#ax[1, 0].set_title("Mooring A vs SMOS")
 
-	# Mooring D
-	xD, yD, statsD = clean_and_stats(mooring_D_anom, cryosat_D_anom)
-	plot_subplot(ax[2, 0], xD, yD, statsD[0], statsD[1], statsD, "CryoSat-2")
-	ax[2, 0].set_title("Mooring D vs CryoSat-2")
+	xB_smos, yB_smos, statsB_smos = clean_and_stats(mooring_B_anom_s, smos_B_anom)
+	plot_subplot(ax[1, 1], xB_smos, yB_smos, statsB_smos[0], statsB_smos[1], statsB_smos, "SMOS", "mediumorchid", "Mooring Anomalies (m)")
+	#ax[1, 1].set_title("Mooring B vs SMOS")
 
-	xD_smos, yD_smos, statsD_smos = clean_and_stats(mooring_D_anom, smos_D_anom)
-	plot_subplot(ax[2, 1], xD_smos, yD_smos, statsD_smos[0], statsD_smos[1], statsD_smos, "SMOS")
-	ax[2, 1].set_title("Mooring D vs SMOS")
+	xD_smos, yD_smos, statsD_smos = clean_and_stats(mooring_D_anom_s, smos_D_anom)
+	plot_subplot(ax[1, 2], xD_smos, yD_smos, statsD_smos[0], statsD_smos[1], statsD_smos, "SMOS", "mediumorchid", "Mooring Anomalies (m)")
+	#ax[1, 2].set_title("Mooring D vs SMOS")
 
 	plt.tight_layout()
 	plt.show()
+ 
+ 
 if __name__ == "__main__":
 	#times_series_all()
 	#single_anomaly()
