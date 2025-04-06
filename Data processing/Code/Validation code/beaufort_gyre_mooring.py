@@ -351,70 +351,7 @@ print("smos_x shape:", smos_x.shape, "smos_y shape:", smos_y.shape)
 print("smos_sid shape:", smos_df["sea_ice_draft"].shape)
 print("smos_df shape:", smos_df.shape)
 
-def resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radius=12500):
-	""" 
-	Resample source data onto a new grid using weighted average based on uncertainty.
-	If no valid data, leave as NaN.
-	If no points are found in the radius, set to NaN.
-	"""
-	target_tree = cKDTree(np.column_stack([x_target.ravel(), y_target.ravel()]))  # Tree for faster lookup
 
-	# Initialize arrays to store resampled data and weight sums
-	resampled_sit = np.full(x_target.shape, np.nan)
-	weights_sum = np.zeros(x_target.shape)
-
-	# Flatten all arrays for iteration
-	source_sit = source_sit.ravel()
-	source_sit_un = source_sit_un.ravel()
-	x_source = x_source.ravel()
-	y_source = y_source.ravel()
-
-	for i in range(len(source_sit)):
-		if np.isnan(source_sit[i]) or np.isnan(source_sit_un[i]):
-			continue  # Skip invalid data points
-		
-		indices = target_tree.query_ball_point([x_source[i], y_source[i]], radius)
-
-		if not indices:
-			continue  # If no neighbors are found, skip
-
-		weight = 1 / source_sit_un[i] if source_sit_un[i] != 0 else 0  # Avoid division by zero
-
-		for idx in indices:
-			if idx >= x_target.size:  # Ensure valid index
-				continue
-			
-			row, col = np.unravel_index(idx, x_target.shape)
-
-			# Avoid operations on uninitialized values
-			if np.isnan(resampled_sit[row, col]):
-				resampled_sit[row, col] = 0
-
-			# Weighted sum calculation
-			resampled_sit[row, col] = (resampled_sit[row, col] * weights_sum[row, col] + source_sit[i] * weight) / (weights_sum[row, col] + weight)
-			weights_sum[row, col] += weight
-
-	# Mask invalid values (no data points found)
-	resampled_sit[weights_sum == 0] = np.nan
-
-	return np.ma.masked_invalid(resampled_sit)
-
-def resample_smos_to_cryo(smos_df, cryosat_x, cryosat_y, radius=12500):
-	resampled_mean = []
- 
-	for idx, row in smos_df.iterrows():
-		x_source, y_source = reprojecting(row["longitude"], row["latitude"])
-		resampled_field = resample_to_cryo_grid(x_source, y_source, row["sea_ice_draft"], row["uncertainty"], cryosat_x, cryosat_y, radius)
-
-		mean_sit = np.nanmean(resampled_field)
-		resampled_mean.append(mean_sit)
-
-	smos_df["sea_ice_draft"] = resampled_mean
-	return smos_df
-
-smos_df = resample_smos_to_cryo(smos_df, cryosat_x, cryosat_y)
-print("resampled smos idf shape: ",smos_df["sea_ice_draft"].shape)
-  
 def identify_cells_df(df, cryo_x, cryo_y, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
 	"""
 	Identify satellite grid cells within a specified search radius of a mooring for each month,
