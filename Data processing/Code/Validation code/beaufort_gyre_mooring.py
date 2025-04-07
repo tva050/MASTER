@@ -9,6 +9,7 @@ import cartopy.crs as ccrs
 from scipy.spatial import cKDTree
 from sklearn.linear_model import LinearRegression
 import seaborn as sns
+from matplotlib.ticker import PercentFormatter
 
 """ 
 Plan 
@@ -352,7 +353,7 @@ print("smos_sid shape:", smos_df["sea_ice_draft"].shape)
 print("smos_df shape:", smos_df.shape)
 
 
-def identify_cells_df(df, cryo_x, cryo_y, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
+def identify_cells_df(df, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
 	"""
 	Identify satellite grid cells within a specified search radius of a mooring for each month,
 	and compute statistics (mean, median, std, min, max) of sea ice draft for that month.
@@ -391,9 +392,7 @@ def identify_cells_df(df, cryo_x, cryo_y, mooring_x, mooring_y, search_radius=RA
 	for idx, row in df.iterrows():
 		# Reproject the grid for this month
 		# (if the row already contains reprojected coordinates, you can use them directly)
-		#x_grid, y_grid = reprojecting(row["longitude"], row["latitude"]) 
-		x_grid = cryo_x
-		y_grid = cryo_y
+		x_grid, y_grid = reprojecting(row["longitude"], row["latitude"]) 
 		
 		# Flatten the grids to get a list of grid cell coordinates (n_points x 2)
 		points = np.column_stack((x_grid.flatten(), y_grid.flatten()))
@@ -431,13 +430,13 @@ def identify_cells_df(df, cryo_x, cryo_y, mooring_x, mooring_y, search_radius=RA
 		
 	return pd.DataFrame(results)
 
-cryosat_stats_A = identify_cells_df(cryosat_df, cryosat_x, cryosat_y, mooring_a_x, mooring_a_y)
-cryosat_stats_B = identify_cells_df(cryosat_df, cryosat_x, cryosat_y, mooring_b_x, mooring_b_y)
-cryosat_stats_D = identify_cells_df(cryosat_df, cryosat_x, cryosat_y, mooring_d_x, mooring_d_y)
+cryosat_stats_A = identify_cells_df(cryosat_df, mooring_a_x, mooring_a_y)
+cryosat_stats_B = identify_cells_df(cryosat_df, mooring_b_x, mooring_b_y)
+cryosat_stats_D = identify_cells_df(cryosat_df, mooring_d_x, mooring_d_y)
 
-smos_stats_A = identify_cells_df(smos_df, cryosat_x, cryosat_y, mooring_a_x, mooring_a_y)
-smos_stats_B = identify_cells_df(smos_df, cryosat_x, cryosat_y, mooring_b_x, mooring_b_y)
-smos_stats_D = identify_cells_df(smos_df, cryosat_x, cryosat_y, mooring_d_x, mooring_d_y)
+smos_stats_A = identify_cells_df(smos_df, mooring_a_x, mooring_a_y)
+smos_stats_B = identify_cells_df(smos_df, mooring_b_x, mooring_b_y)
+smos_stats_D = identify_cells_df(smos_df, mooring_d_x, mooring_d_y)
 
 mooring_A_draft = monthly_stats_A["mean_draft"]
 cryosat_A_draft = cryosat_stats_A["mean_draft"]
@@ -616,7 +615,10 @@ def single_anomaly():
 	plt.show()
  
 def valid_mask(mooring_anomalies, satellite_anomalies):
-	valid_mask = (mooring_anomalies >= 0) & (mooring_anomalies <= 1) & (satellite_anomalies >= 0) & (satellite_anomalies <= 1)
+	valid_mask = (mooring_anomalies >= 0) & (mooring_anomalies <= 1) & \
+			 	 (satellite_anomalies >= 0) & (satellite_anomalies <= 1)
+	#valid_mask_mooring = (mooring_anomalies >= 0) & (mooring_anomalies <= 1)
+	#valid_mask_satellite = (satellite_anomalies >= 0) & (satellite_anomalies <= 1)
 	mooring_anomalies = mooring_anomalies[valid_mask]
 	satellite_anomalies = satellite_anomalies[valid_mask]	
 	return mooring_anomalies, satellite_anomalies	
@@ -650,7 +652,7 @@ def add_boxplot(ax, x_data, y_data, num_bins=8):
 	for cap in bp['caps']:
 		cap.set(color='black', linewidth=1)
 	for median in bp['medians']:
-		median.set(color='darkred', linewidth=2)
+		median.set(color='black', linewidth=1)
 
 
 def plot_subplot(ax, x, y, reg_x, reg_y, stats, label, color, xlabel):
@@ -663,15 +665,15 @@ def plot_subplot(ax, x, y, reg_x, reg_y, stats, label, color, xlabel):
 	ax.plot([lower, upper], [lower, upper], '--', color='gray', zorder=0)
 
 	ax.set_xlabel(xlabel)
-	ax.set_ylabel(f"{label} Anomalies (m)")
+	#ax.set_ylabel(f"{label} Anomalies (m)")
 	ax.legend()
 	ax.grid(True)
 
 	# Add statistics text
 	n, bias, rmse, r, slope, intercept = stats[2:8]
 	stats_text = (f"n: {n}\n"
-				  f"Bias: {bias:.2f}\n"
-				  f"RMSE: {rmse:.2f}\n"
+				  f"Bias: {bias:.2f} m\n"
+				  f"RMSE: {rmse:.2f} m\n"
 				  f"r: {r:.2f}\n"
 				  f"Slope: {slope:.2f}\n"
 				  f"Intercept: {intercept:.2f}")
@@ -687,7 +689,7 @@ def draft_anomalies():
  
 	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
 	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
-	mooring_C_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
+	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
  
 	mooring_A_anom_c = mooring_A_draft_C - np.nanmean(mooring_A_draft_C)
 	cryosat_A_anom = cryosat_A_draft_c - np.nanmean(cryosat_A_draft_c)
@@ -701,41 +703,105 @@ def draft_anomalies():
 	smos_B_anom = smos_B_draft_s- np.nanmean(smos_B_draft_s)
 	mooring_B_anom_s = mooring_B_draft_S - np.nanmean(mooring_B_draft_S)
 	smos_D_anom = smos_D_draft_s - np.nanmean(smos_D_draft_s)
-	mooring_D_anom_s = mooring_C_draft_S - np.nanmean(mooring_C_draft_S)
+	mooring_D_anom_s = mooring_D_draft_S - np.nanmean(mooring_D_draft_S)
 
-	fig, ax = plt.subplots(2, 3, figsize=(14, 14), sharex=True)
+	fig, ax = plt.subplots(2, 3, figsize=(10, 10), sharex=True)
 
 	# CryoSat-2
 	xA, yA, statsA = clean_and_stats(mooring_A_anom_c, cryosat_A_anom)
-	plot_subplot(ax[0, 0], xA, yA, statsA[0], statsA[1], statsA, "CryoSat-2", "teal", "")
+	plot_subplot(ax[0, 0], xA, yA, statsA[0], statsA[1], statsA, "CryoSat-2", "black", "")
+	ax[0, 0].set_ylabel("CryoSat-2 Anomalies [m]")
 	ax[0, 0].set_title("BGEP Mooring A")
  
 	xB, yB, statsB = clean_and_stats(mooring_B_anom_c, cryosat_B_anom)
-	plot_subplot(ax[0, 1], xB, yB, statsB[0], statsB[1], statsB, "CryoSat-2", "teal", "")
+	plot_subplot(ax[0, 1], xB, yB, statsB[0], statsB[1], statsB, "CryoSat-2", "black", "")
 	ax[0, 1].set_title("BGEP Mooring B")
 
 	xD, yD, statsD = clean_and_stats(mooring_D_anom_c, cryosat_D_anom)
-	plot_subplot(ax[0, 2], xD, yD, statsD[0], statsD[1], statsD, "CryoSat-2", "teal", "")
+	plot_subplot(ax[0, 2], xD, yD, statsD[0], statsD[1], statsD, "CryoSat-2", "black", "")
 	ax[0, 2].set_title("BGEP Mooring D")
 
 	# SMOS
 	xA_smos, yA_smos, statsA_smos = clean_and_stats(mooring_A_anom_s, smos_A_anom)
-	plot_subplot(ax[1, 0], xA_smos, yA_smos, statsA_smos[0], statsA_smos[1], statsA_smos, "SMOS", "mediumorchid", "Mooring Anomalies (m)")
+	plot_subplot(ax[1, 0], xA_smos, yA_smos, statsA_smos[0], statsA_smos[1], statsA_smos, "SMOS", "black", "Mooring Anomalies [m]")
+	ax[1, 0].set_ylabel("SMOS Anomalies [m]")
 	#ax[1, 0].set_title("Mooring A vs SMOS")
 
 	xB_smos, yB_smos, statsB_smos = clean_and_stats(mooring_B_anom_s, smos_B_anom)
-	plot_subplot(ax[1, 1], xB_smos, yB_smos, statsB_smos[0], statsB_smos[1], statsB_smos, "SMOS", "mediumorchid", "Mooring Anomalies (m)")
+	plot_subplot(ax[1, 1], xB_smos, yB_smos, statsB_smos[0], statsB_smos[1], statsB_smos, "SMOS", "black", "Mooring Anomalies [m]")
 	#ax[1, 1].set_title("Mooring B vs SMOS")
 
 	xD_smos, yD_smos, statsD_smos = clean_and_stats(mooring_D_anom_s, smos_D_anom)
-	plot_subplot(ax[1, 2], xD_smos, yD_smos, statsD_smos[0], statsD_smos[1], statsD_smos, "SMOS", "mediumorchid", "Mooring Anomalies (m)")
+	plot_subplot(ax[1, 2], xD_smos, yD_smos, statsD_smos[0], statsD_smos[1], statsD_smos, "SMOS", "black", "Mooring Anomalies [m]")
 	#ax[1, 2].set_title("Mooring D vs SMOS")
 
 	plt.tight_layout()
 	plt.show()
+	 
+ 
+def histogram():
+	""" 
+	Plot histograms of the mooring sea ice draft, compared with the satellite sea ice draft ranging from 0 to 1 m.
+	"""
+	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
+	mooring_B_draft_C, cryosat_B_draft_c = valid_mask(mooring_B_draft, cryosat_B_draft)
+	mooring_D_draft_C, cryosat_D_draft_c = valid_mask(mooring_D_draft, cryosat_D_draft)
+ 
+	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
+	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
+	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
+	
+	fig, ax = plt.subplots(2, 3, figsize=(12, 8), sharex=True, sharey=True)
+
+	# Mooring A
+	ax[0, 0].hist(mooring_A_draft_C, bins=20, color="midnightblue", label="Mooring", zorder = 1)
+	ax[0, 0].hist(cryosat_A_draft_c, bins=20, edgecolor="teal", fill=False, hatch = "xx",label="CryoSat-2", zorder = 2)
+	ax[0, 0].set_title("Mooring A")
+	ax[0, 0].set_ylabel("Count")
+	ax[0, 0].grid(True, zorder = 0)
+	ax[0, 0].legend()
+
+	# Mooring B
+	ax[0, 1].hist(mooring_B_draft_C, bins=20, color="midnightblue", zorder = 1)
+	ax[0, 1].hist(cryosat_B_draft_c, bins=20, edgecolor="teal", fill=False, hatch = "xx", zorder = 2)
+	ax[0, 1].grid(True, zorder = 0)
+	ax[0, 1].set_title("Mooring B")
+
+	# Mooring D
+	ax[0, 2].hist(mooring_D_draft_C, bins=20, color="midnightblue", zorder = 1)
+	ax[0, 2].hist(cryosat_D_draft_c, bins=20, edgecolor="teal", fill=False, hatch = "xx", zorder = 2)
+	ax[0, 2].grid(True, zorder = 0)
+	ax[0, 2].set_title("Mooring D")
+
+	# SMOS Mooring A
+	ax[1, 0].hist(mooring_A_draft_S, bins=20, color="midnightblue", label="Mooring", zorder = 1)
+	ax[1, 0].hist(smos_A_draft_s, bins=20, edgecolor="forestgreen", fill=False, hatch = "xx", label="SMOS", zorder = 2)
+	ax[1, 0].grid(True, zorder = 0)
+	ax[1, 0].set_xlabel("Ice draft [m]")
+	ax[1, 0].set_ylabel("Count")
+	ax[1, 0].legend()
+ 
+ 
+	# SMOS Mooring B
+	ax[1, 1].hist(mooring_B_draft_S, bins=20, color="midnightblue", zorder = 1)
+	ax[1, 1].hist(smos_B_draft_s, bins=20, edgecolor="forestgreen", fill=False, hatch = "xx", zorder = 2)
+	ax[1, 1].grid(True, zorder = 0)
+	ax[1, 1].set_xlabel("Ice draft [m]")	
+ 
+	# SMOS Mooring D
+	ax[1, 2].hist(mooring_D_draft_S, bins=20, color="midnightblue", zorder = 1)
+	ax[1, 2].hist(smos_D_draft_s, bins=20, edgecolor="forestgreen", fill=False, hatch = "xx", zorder = 2)
+	ax[1, 2].grid(True, zorder = 0)
+	ax[1, 2].set_xlabel("Ice draft [m]")
+ 
+	plt.tight_layout()
+	plt.show()
+ 
+	
  
  
 if __name__ == "__main__":
-	#times_series_all()
+	times_series_all()
 	#single_anomaly()
 	draft_anomalies()
+	histogram()

@@ -354,74 +354,131 @@ print("smos_x shape:", smos_x.shape, "smos_y shape:", smos_y.shape)
 print("smos_sid shape:", smos_df["sea_ice_draft"].shape)
 print("smos_df shape:", smos_df.shape)
 
-def accumulate_weights_numba(source_sit, source_sit_un, x_source, y_source, target_points, radius):
-    n_source = source_sit.shape[0]
-    n_target = target_points.shape[0]
-    resampled = np.full(n_target, np.nan)  # initialize output with NaN
-    weight_sum = np.zeros(n_target)
-    
-    for i in prange(n_source):
-        if np.isnan(source_sit[i]) or np.isnan(source_sit_un[i]):
-            continue
-        weight = 1.0 / source_sit_un[i] if source_sit_un[i] != 0 else 0.0
-        for j in range(n_target):
-            dx = x_source[i] - target_points[j, 0]
-            dy = y_source[i] - target_points[j, 1]
-            dist = np.sqrt(dx * dx + dy * dy)
-            if dist <= radius:
-                # If first time, initialize to 0
-                if np.isnan(resampled[j]):
-                    resampled[j] = 0.0
-                # Weighted average update:
-                resampled[j] = (resampled[j] * weight_sum[j] + source_sit[i] * weight) / (weight_sum[j] + weight)
-                weight_sum[j] += weight
+def resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radius=12500):
+	""" 
+	Resample source data onto a new grid using weighted average based on uncertainty.
+	If no valid data, leave as NaN.
+	If no points are found in the radius, set to NaN.
+	"""
+	target_tree = cKDTree(np.column_stack([x_target.ravel(), y_target.ravel()]))  # Tree for faster lookup
 
-    # Set cells with zero weight to NaN
-    for j in prange(n_target):
-        if weight_sum[j] == 0:
-            resampled[j] = np.nan
+	# Initialize arrays to store resampled data and weight sums
+	resampled_sit = np.full(x_target.shape, np.nan)
+	weights_sum = np.zeros(x_target.shape)
 
-    return resampled
+	# Flatten all arrays for iteration
+	source_sit = source_sit.ravel()
+	source_sit_un = source_sit_un.ravel()
+	x_source = x_source.ravel()
+	y_source = y_source.ravel()
 
+	for i in range(len(source_sit)):
+		if np.isnan(source_sit[i]) or np.isnan(source_sit_un[i]):
+			continue  # Skip invalid data points
+		
+		indices = target_tree.query_ball_point([x_source[i], y_source[i]], radius)
 
-def resample_to_cryo_grid_numba(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radius=12500):
-    """
-    Resample source data onto the target grid using the Numba-accelerated accumulate_weights_numba.
-    """
-    # Flatten the target grid and build a list of target points
-    target_points = np.column_stack([x_target.ravel(), y_target.ravel()])
+		if not indices:
+			continue  # If no neighbors are found, skip
 
-    # Flatten source arrays
-    x_source_flat = x_source.ravel()
-    y_source_flat = y_source.ravel()
-    source_sit_flat = source_sit.ravel()
-    source_sit_un_flat = source_sit_un.ravel()
+		weight = 1 / source_sit_un[i] if source_sit_un[i] != 0 else 0  # Avoid division by zero
 
-    # Call the Numba function
-    resampled_flat = accumulate_weights_numba(source_sit_flat, source_sit_un_flat, x_source_flat, y_source_flat, target_points, radius)
+		for idx in indices:
+			if idx >= x_target.size:  # Ensure valid index
+				continue
+			
+			row, col = np.unravel_index(idx, x_target.shape)
 
-    # Reshape the flat array back to target grid shape
-    resampled_field = resampled_flat.reshape(x_target.shape)
-    return resampled_field
+			# Avoid operations on uninitialized values
+			if np.isnan(resampled_sit[row, col]):
+				resampled_sit[row, col] = 0
+
+			# Weighted sum calculation
+			resampled_sit[row, col] = (resampled_sit[row, col] * weights_sum[row, col] + source_sit[i] * weight) / (weights_sum[row, col] + weight)
+			weights_sum[row, col] += weight
+
+	# Mask invalid values (no data points found)
+	resampled_sit[weights_sum == 0] = np.nan
+
+	return np.ma.masked_invalid(resampled_sit)
 
 def resample_smos_to_cryo(smos_df, cryosat_x, cryosat_y, radius=12500):
-    resampled_mean = []
-    
-    for idx, row in smos_df.iterrows():
-        # Reproject the SMOS grid for this row
-        x_source, y_source = reprojecting(row["longitude"], row["latitude"])
-        
-        # Use the Numba-accelerated function to resample the field onto the CryoSat grid
-        resampled_field = resample_to_cryo_grid_numba(x_source, y_source, row["sea_ice_draft"], row["uncertainty"], cryosat_x, cryosat_y, radius)
-        
-        # Compute a representative statistic (e.g., spatial mean)
-        mean_sit = np.nanmean(resampled_field)
-        resampled_mean.append(mean_sit)
-    
-    # Replace (or add to) the SMOS draft column with the resampled values
-    smos_df["sea_ice_draft"] = np.array(resampled_mean)
-    return smos_df
+	resampled_mean = []
+ 
+	for idx, row in smos_df.iterrows():
+		x_source, y_source = reprojecting(row["longitude"], row["latitude"])
+		resampled_field = resample_to_cryo_grid(x_source, y_source, row["sea_ice_draft"], row["uncertainty"], cryosat_x, cryosat_y, radius)
+
+		mean_sit = np.nanmean(resampled_field)
+		resampled_mean.append(mean_sit)
+
+	smos_df["sea_ice_draft"] = resampled_mean
+	return smos_df
+
+#smos_df = resample_smos_to_cryo(smos_df, cryosat_x, cryosat_y)
+print("resampled smos idf shape: ",smos_df["sea_ice_draft"].shape)
 
 
 smos_df = resample_smos_to_cryo(smos_df, cryosat_x, cryosat_y)
+
+def identify_cells_df(df, cryo_x, cryo_y, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
+	results = []
+	for idx, row in df.iterrows():
+		x_grid = cryo_x
+		y_grid = cryo_y
+		
+		# Flatten the grids to get a list of grid cell coordinates (n_points x 2)
+		points = np.column_stack((x_grid.flatten(), y_grid.flatten()))
+		tree = cKDTree(points)
+		
+		# Find indices of grid cells within the search radius of the mooring point
+		indices = tree.query_ball_point([mooring_x, mooring_y], r=search_radius)
+		
+		# Extract the sea ice draft for this month and flatten
+		sid_grid = row["sea_ice_draft"]
+		sid_values = sid_grid.flatten()[indices]
+		
+		# Remove NaNs from the draft values
+		sid_valid = sid_values[~np.isnan(sid_values)]
+		
+		if len(sid_valid) > 0:
+			stats = {
+				"mean_draft": np.mean(sid_valid),
+				"median_draft": np.median(sid_valid),
+				"std_draft": np.std(sid_valid),
+				"min_draft": np.min(sid_valid),
+				"max_draft": np.max(sid_valid)
+			}
+		else:
+			stats = {
+				"mean_draft": np.nan,
+				"median_draft": np.nan,
+				"std_draft": np.nan,
+				"min_draft": np.nan,
+				"max_draft": np.nan
+			}
+		
+		stats["date"] = row["date"]  # assuming the date column exists in df
+		results.append(stats)
+	return pd.DataFrame(results)
 # stop the profiler
+
+cryosat_stats_A = identify_cells_df(cryosat_df, cryosat_x, cryosat_y, mooring_a_x, mooring_a_y)
+cryosat_stats_B = identify_cells_df(cryosat_df, cryosat_x, cryosat_y, mooring_b_x, mooring_b_y)
+cryosat_stats_D = identify_cells_df(cryosat_df, cryosat_x, cryosat_y, mooring_d_x, mooring_d_y)
+
+smos_stats_A = identify_cells_df(smos_df, cryosat_x, cryosat_y, mooring_a_x, mooring_a_y)
+smos_stats_B = identify_cells_df(smos_df, cryosat_x, cryosat_y,mooring_b_x, mooring_b_y)
+smos_stats_D = identify_cells_df(smos_df, cryosat_x, cryosat_y,mooring_d_x, mooring_d_y)
+
+mooring_A_draft = monthly_stats_A["mean_draft"]
+cryosat_A_draft = cryosat_stats_A["mean_draft"]
+smos_A_draft = smos_stats_A["mean_draft"]
+mooring_B_draft = monthly_stats_B["mean_draft"]
+cryosat_B_draft = cryosat_stats_B["mean_draft"]
+smos_B_draft = smos_stats_B["mean_draft"]
+mooring_D_draft = monthly_stats_D["mean_draft"]
+cryosat_D_draft = cryosat_stats_D["mean_draft"]
+smos_D_draft = smos_stats_D["mean_draft"]
+
+
