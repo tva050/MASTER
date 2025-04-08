@@ -448,7 +448,13 @@ mooring_D_draft = monthly_stats_D["mean_draft"]
 cryosat_D_draft = cryosat_stats_D["mean_draft"]
 smos_D_draft = smos_stats_D["mean_draft"]
 
-print("jupp nais")
+def mooring_draft_range(mooring_df, satellite_df):
+	mask = (mooring_df["mean_draft"] >= 0) & (mooring_df["mean_draft"] <= 1)
+	mooring_df_f = mooring_df[mask]
+	valid_dates = mooring_df_f["date"].unique()
+	satellite_df_f = satellite_df[satellite_df["date"].isin(valid_dates)]
+	return mooring_df_f, satellite_df_f
+
 
 def times_series_all():
 	monthly_stats_A["date"] = pd.to_datetime(monthly_stats_A["date"])
@@ -463,33 +469,44 @@ def times_series_all():
 	smos_stats_B["date"] = pd.to_datetime(smos_stats_B["date"])	
 	smos_stats_D["date"] = pd.to_datetime(smos_stats_D["date"])
  
+	msA_f, csA_f = mooring_draft_range(monthly_stats_A, cryosat_stats_A)
+	msB_f, csB_f = mooring_draft_range(monthly_stats_B, cryosat_stats_B)
+	msD_f, csD_f = mooring_draft_range(monthly_stats_D, cryosat_stats_D)
+ 
+	_, smA_f = mooring_draft_range(monthly_stats_A, smos_stats_A)
+	_, smB_f = mooring_draft_range(monthly_stats_B, smos_stats_B)
+	_, smD_f = mooring_draft_range(monthly_stats_D, smos_stats_D)
+ 
 	# 3 subplots for each mooring
 	fig, ax = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
 	
 	# Plot for mooring A
-	ax[0].plot(monthly_stats_A["date"], monthly_stats_A["mean_draft"], marker="d",label="Mooring Ice Draft", color="black", zorder = 0)
-	ax[0].scatter(cryosat_stats_A["date"], cryosat_stats_A["mean_draft"], label="CS2 UiT Ice Draft", color="teal", zorder = 1)
-	ax[0].scatter(smos_stats_A["date"], smos_stats_A["mean_draft"], label="SMOS Ice Draft", color="salmon", zorder = 2)
-	ax[0].set_ylim(0.0, 1)
+	ax[0].plot(msA_f["date"], msA_f["mean_draft"], marker="d",label="Mooring Ice Draft", color="black", zorder = 0)
+	ax[0].scatter(csA_f["date"], csA_f["mean_draft"], label="CS2 UiT Ice Draft", color="teal", zorder = 1)
+	ax[0].scatter(smA_f["date"], smA_f["mean_draft"], label="SMOS Ice Draft", color="salmon", zorder = 2)
+	for date in msA_f["date"]:
+		ax[0].axvline(date, linestyle='--', color='gray', alpha=0.5, linewidth=1)
 	ax[0].set_ylabel("Draft (m)")
 	ax[0].set_title("Mooring A")
 	ax[0].legend()
 	ax[0].grid(True)
 
 	# Plot for mooring B
-	ax[1].plot(monthly_stats_B["date"], monthly_stats_B["mean_draft"], marker="d", color="black", zorder = 0)
-	ax[1].scatter(cryosat_stats_B["date"], cryosat_stats_B["mean_draft"], color="teal", zorder = 1)
-	ax[1].scatter(smos_stats_B["date"], smos_stats_B["mean_draft"], color="salmon", zorder = 2)
-	ax[1].set_ylim(0.0, 1)
+	ax[1].plot(msB_f["date"], msB_f["mean_draft"], marker="d", color="black", zorder = 0)
+	ax[1].scatter(csB_f["date"], csB_f["mean_draft"], color="teal", zorder = 1)
+	ax[1].scatter(smB_f["date"], smB_f["mean_draft"], color="salmon", zorder = 2)
+	for date in msB_f["date"]:
+		ax[1].axvline(date, linestyle='--', color='gray', alpha=0.5, linewidth=1)
 	ax[1].set_ylabel("Draft (m)")
 	ax[1].set_title("Mooring B")
 	ax[1].grid(True)
 
 	# Plot for mooring D
-	ax[2].plot(monthly_stats_D["date"], monthly_stats_D["mean_draft"], marker="d", color="black", zorder = 0)
-	ax[2].scatter(cryosat_stats_D["date"], cryosat_stats_D["mean_draft"], color="teal", zorder = 1)
-	ax[2].scatter(smos_stats_D["date"], smos_stats_D["mean_draft"], color="salmon", zorder = 2)
-	ax[2].set_ylim(0.0, 1)
+	ax[2].plot(msD_f["date"], msD_f["mean_draft"], marker="d", color="black", zorder = 0)
+	ax[2].scatter(csD_f["date"], csD_f["mean_draft"], color="teal", zorder = 1)
+	ax[2].scatter(smD_f["date"], smD_f["mean_draft"], color="salmon", zorder = 2)
+	for date in msD_f["date"]:
+		ax[2].axvline(date, linestyle='--', color='gray', alpha=0.5, linewidth=1)
 	ax[2].set_ylabel("Draft (m)")
 	ax[2].set_xlabel("Date")
 	ax[2].set_title("Mooring D")
@@ -552,6 +569,7 @@ def single_anomaly():
 				 (cryosat_A_draft >= 0) & (cryosat_A_draft <= 1)
 	
 	# Filter the data using the mask
+ 
 	mooring_A_draft_valid = mooring_A_draft[valid_mask]
 	cryosat_A_draft_valid = cryosat_A_draft[valid_mask]
 
@@ -681,6 +699,40 @@ def plot_subplot(ax, x, y, reg_x, reg_y, stats, label, color, xlabel):
 			ha='right', va='bottom', bbox=dict(facecolor='gray', alpha=0.5))
 
 
+def compute_monthly_anomalies(draft_data, dates):
+	"""
+	Computes anomalies by subtracting the monthly mean (climatology) from the draft data.
+	
+	Parameters
+	----------
+	draft_data : array-like
+		The draft data (e.g. mooring or satellite values).
+	dates : array-like
+		Dates corresponding to the draft values. They must be convertible to datetime.
+	
+	Returns
+	-------
+	anomalies : numpy.ndarray
+		An array of anomalies computed as: data - monthly_mean.
+	"""
+	# Create a DataFrame from your data
+	df = pd.DataFrame({
+		"date": pd.to_datetime(dates),
+		"draft": draft_data
+	})
+	
+	# Extract the month (as an integer 1-12)
+	df["month"] = df["date"].dt.month
+	
+	# Compute the monthly mean (climatology) across all years.
+	# The transform('mean') call replicates the monthly mean for each row.
+	df["monthly_mean"] = df.groupby("month")["draft"].transform("mean")
+	print(df["monthly_mean"])
+	# Calculate anomalies: difference from the monthly mean.
+	df["anomaly"] = df["draft"] - df["monthly_mean"]
+	
+	return df["anomaly"].values
+
 def draft_anomalies():
 	# Calculate anomalies
 	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
@@ -691,19 +743,39 @@ def draft_anomalies():
 	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
 	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
  
-	mooring_A_anom_c = mooring_A_draft_C - np.nanmean(mooring_A_draft_C)
-	cryosat_A_anom = cryosat_A_draft_c - np.nanmean(cryosat_A_draft_c)
-	mooring_B_anom_c = mooring_B_draft_C - np.nanmean(mooring_B_draft_C)
-	cryosat_B_anom = cryosat_B_draft_c - np.nanmean(cryosat_B_draft_c)
-	mooring_D_anom_c = mooring_D_draft_C - np.nanmean(mooring_D_draft_C)
-	cryosat_D_anom = cryosat_D_draft_c - np.nanmean(cryosat_D_draft_c)
-
-	smos_A_anom = smos_A_draft_s - np.nanmean(smos_A_draft_s)
-	mooring_A_anom_s = mooring_A_draft_S - np.nanmean(mooring_A_draft_S)
-	smos_B_anom = smos_B_draft_s- np.nanmean(smos_B_draft_s)
-	mooring_B_anom_s = mooring_B_draft_S - np.nanmean(mooring_B_draft_S)
-	smos_D_anom = smos_D_draft_s - np.nanmean(smos_D_draft_s)
-	mooring_D_anom_s = mooring_D_draft_S - np.nanmean(mooring_D_draft_S)
+	# Calculate anomalies
+	# We do that by taking the mean of the months (oct, nov, dec, etc) for all the years, then replicate that for the number of years
+	# and subtract from the original data (anomalies = data - mean_months)
+	# This is done for both mooring and satellite data
+	
+	mooring_A_anom_c = compute_monthly_anomalies(mooring_A_draft_C, monthly_stats_A["date"])
+	cryosat_A_anom = compute_monthly_anomalies(cryosat_A_draft_c, cryosat_stats_A["date"])
+	mooring_B_anom_c = compute_monthly_anomalies(mooring_B_draft_C, monthly_stats_B["date"])
+	cryosat_B_anom = compute_monthly_anomalies(cryosat_B_draft_c, cryosat_stats_B["date"])
+	mooring_D_anom_c = compute_monthly_anomalies(mooring_D_draft_C, monthly_stats_D["date"])
+	cryosat_D_anom = compute_monthly_anomalies(cryosat_D_draft_c, cryosat_stats_D["date"])
+ 
+	mooring_A_anom_s = compute_monthly_anomalies(mooring_A_draft_S, monthly_stats_A["date"])
+	smos_A_anom = compute_monthly_anomalies(smos_A_draft_s, smos_stats_A["date"])
+	mooring_B_anom_s = compute_monthly_anomalies(mooring_B_draft_S, monthly_stats_B["date"])
+	smos_B_anom = compute_monthly_anomalies(smos_B_draft_s, smos_stats_B["date"])
+	mooring_D_anom_s = compute_monthly_anomalies(mooring_D_draft_S, monthly_stats_D["date"])
+	smos_D_anom = compute_monthly_anomalies(smos_D_draft_s, smos_stats_D["date"])
+ 
+ 
+	#mooring_A_anom_c = mooring_A_draft_C - np.nanmean(mooring_A_draft_C)
+	#cryosat_A_anom = cryosat_A_draft_c - np.nanmean(cryosat_A_draft_c)
+	#mooring_B_anom_c = mooring_B_draft_C - np.nanmean(mooring_B_draft_C)
+	#cryosat_B_anom = cryosat_B_draft_c - np.nanmean(cryosat_B_draft_c)
+	#mooring_D_anom_c = mooring_D_draft_C - np.nanmean(mooring_D_draft_C)
+	#cryosat_D_anom = cryosat_D_draft_c - np.nanmean(cryosat_D_draft_c)
+#
+	#smos_A_anom = smos_A_draft_s - np.nanmean(smos_A_draft_s)
+	#mooring_A_anom_s = mooring_A_draft_S - np.nanmean(mooring_A_draft_S)
+	#smos_B_anom = smos_B_draft_s- np.nanmean(smos_B_draft_s)
+	#mooring_B_anom_s = mooring_B_draft_S - np.nanmean(mooring_B_draft_S)
+	#smos_D_anom = smos_D_draft_s - np.nanmean(smos_D_draft_s)
+	#mooring_D_anom_s = mooring_D_draft_S - np.nanmean(mooring_D_draft_S)
 
 	fig, ax = plt.subplots(2, 3, figsize=(10, 10), sharex=True)
 
@@ -803,5 +875,5 @@ def histogram():
 if __name__ == "__main__":
 	times_series_all()
 	#single_anomaly()
-	draft_anomalies()
-	histogram()
+	#draft_anomalies()
+	#histogram()

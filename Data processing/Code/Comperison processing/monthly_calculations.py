@@ -85,7 +85,8 @@ def SMOS_monthly(folder_path):
         
         for file in files:
             with xr.open_dataset(file) as ds:
-                sit_list.append(ds["sea_ice_thickness"].values)
+                sit_day = ds["sea_ice_thickness"].values
+                sit_list.append(sit_day)
                 uncertainty_list.append(ds["ice_thickness_uncertainty"].values)
                 land_mask = ds.get("land", None)
                 
@@ -94,13 +95,14 @@ def SMOS_monthly(folder_path):
                     uncertainty_list[-1] = np.where(land_mask == 1, np.nan, uncertainty_list[-1])
                 else:
                     print("land mask not found in all files")
+                
                     
                 if lat is None:
                     lat = ds["latitude"].values
                     lon = ds["longitude"].values
             
             os.remove(file)  # Remove the file after processing
-                    
+               
         mask_sit = ~np.isnan(sit_list) & (sit_list != -999.0) & (sit_list != 0.0)
         mask_unc = ~np.isnan(uncertainty_list) & (uncertainty_list != -999.0) & (uncertainty_list != 0.0)
         sit = np.where(mask_sit, sit_list, np.nan)
@@ -139,13 +141,13 @@ def SMOS_monthly(folder_path):
                 "units": "m",
             },
         )
-
         new_ds.to_netcdf(output_file)
     
     return smos_data
 
-#smos_data = SMOS_monthly(folder_path)
-   
+smos_data = SMOS_monthly(folder_path)
+
+#month_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\test data\SMOS_monthly\SMOS_monthly_Icethickness_north_201211.nc"
 def print_nc_metadata(file_path):
     """Prints metadata from a NetCDF (.nc) file."""
     # Open the NetCDF file
@@ -166,5 +168,6 @@ def print_nc_metadata(file_path):
             # Print variable attributes
             for attr in var.ncattrs():
                 print(f"  {attr}: {var.getncattr(attr)}")
+    
                 
 #print_nc_metadata(month_path)

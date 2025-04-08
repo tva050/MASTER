@@ -19,31 +19,32 @@ import netCDF4 as nc
 from scipy.interpolate import griddata
 import seaborn as sns
 
-smos_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\oct_mean_thickness.nc"
-smos_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\nov_mean_thickness.nc"
-smos_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\2021\dec_mean_thickness.nc"
+smos_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\SMOS_monthly\SMOS_monthly_Icethickness_north_202110.nc"
+smos_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\SMOS_monthly\SMOS_monthly_Icethickness_north_202111.nc"
+smos_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOS\All years\SMOS_monthly\SMOS_monthly_Icethickness_north_202112.nc"
 
-cpom_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM\thk_2021_10.map.nc"
-cpom_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM\thk_2021_11.map.nc"
-cpom_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM\thk_2021_12.map.nc"
+cpom_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM product\thk_2021_10.map.nc"
+cpom_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM product\thk_2021_11.map.nc"
+cpom_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\CPOM product\thk_2021_12.map.nc"
 
 cryo_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product\uit_cryosat2_L3_EASE2_nh25km_2021_10_v3.nc"
 cryo_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product\uit_cryosat2_L3_EASE2_nh25km_2021_11_v3.nc"
 cryo_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product\uit_cryosat2_L3_EASE2_nh25km_2021_12_v3.nc"
 
-awi_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\AWI\awi-siral-l3c-sithick-cryosat2-rep-nh_25km_ease2-202110-fv2p6.nc"
-awi_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\AWI\awi-siral-l3c-sithick-cryosat2-rep-nh_25km_ease2-202111-fv2p6.nc"
-awi_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\AWI\awi-siral-l3c-sithick-cryosat2-rep-nh_25km_ease2-202112-fv2p6.nc"
+awi_oct_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\AWI product\awi-siral-l3c-sithick-cryosat2-rep-nh_25km_ease2-202110-fv2p6.nc"
+awi_nov_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\AWI product\awi-siral-l3c-sithick-cryosat2-rep-nh_25km_ease2-202111-fv2p6.nc"
+awi_dec_2021 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\AWI product\awi-siral-l3c-sithick-cryosat2-rep-nh_25km_ease2-202112-fv2p6.nc"
 
 
 
 def get_cpom(path):
 	data = nc.Dataset(path)
-	#print(data.variables.keys())
+	print("CPOM keys: ", data.variables.keys())
 	
 	lat = data.variables['latitude'][:]
 	lon = data.variables['longitude'][:]
 	si_thickness = data.variables['thickness'][:]
+	si_thickness_un = data.variables['thk_stdev'][:]
 	grid_spacing = data.variables["grid_spacing"][:]
 	si_thickness_stdev = data.variables["thk_stdev"][:]
 	
@@ -51,16 +52,16 @@ def get_cpom(path):
 	#print(f"Lon shape: {lon.shape}")
 	#print(f"Thickness shape: {si_thickness.shape}")
 	
-	return lat, lon, si_thickness
+	return lat, lon, si_thickness, si_thickness_un
 
 def get_cryo(path):
 	data = nc.Dataset(path)
-	#print(data.variables.keys())
+	print("cryo keys: ", data.variables.keys())
 	
-	lat = data.variables['Latitude'][:]
-	lon = data.variables['Longitude'][:]
-	si_thickness = data.variables['Sea_Ice_Thickness'][:]
-	si_thickness_un = data.variables['Sea_Ice_Thickness_Uncertainty'][:]
+	lat = data.variables['latitude'][:]
+	lon = data.variables['longitude'][:]
+	si_thickness = data.variables['sea_ice_thickness'][:]
+	si_thickness_un = data.variables['sea_ice_thickness_uncertainty'][:]
 	
 	# Check if lat and lon are 1D and need reshaping
 	if lat.ndim == 1 and lon.ndim == 1:
@@ -69,14 +70,15 @@ def get_cryo(path):
 	# Mask invalid data
 	mask = ~np.isnan(si_thickness)
 	filtered_si_thickness = np.where(mask, si_thickness, np.nan)
-	return lat, lon, filtered_si_thickness
+	return lat, lon, filtered_si_thickness, si_thickness_un
 
 def get_cryo_W99(path):
 	data = nc.Dataset(path)
 	
-	lat = data.variables['Latitude'][:]
-	lon = data.variables['Longitude'][:]
-	si_thickness = data.variables['Sea_Ice_Thickness_W99'][:]
+	lat = data.variables['latitude'][:]
+	lon = data.variables['longitude'][:]
+	si_thickness = data.variables['sea_ice_thickness_W99'][:]
+	si_thickness_un = data.variables["sea_ice_thickness_uncertainty_W99"][:]
 	
 	if lat.ndim == 1 and lon.ndim == 1:
 		lon, lat = np.meshgrid(lon, lat)
@@ -84,51 +86,79 @@ def get_cryo_W99(path):
 	
 	mask = ~np.isnan(si_thickness)
 	filtered_si_thickness = np.where(mask, si_thickness, np.nan)
-	return lat, lon, filtered_si_thickness
+	return lat, lon, filtered_si_thickness, si_thickness_un
 
 def get_smos(path):
 	data = nc.Dataset(path)
-	# print(data.variables.keys())
+	print("smos keys: ", data.variables.keys())
 	
 	lat = data.variables['latitude'][:]
 	lon = data.variables['longitude'][:]
-	si_thickness = data.variables['sea_ice_thickness'][:]
+	si_thickness = data.variables['mean_ice_thickness'][:]
+	si_thickness_un = data.variables['uncertainty'][:]
 	
-	return lat, lon, si_thickness
+	return lat, lon, si_thickness, si_thickness_un
 	
 def get_awi(path):
 	data = nc.Dataset(path)
-	#print(data.variables.keys())
+	print("AWI keys: ", data.variables.keys())
 	
 	lat = data.variables['lat'][:]
 	lon = data.variables['lon'][:]
 	si_thickness = data.variables['sea_ice_thickness'][:]
+	si_thickness_un = data.variables['sea_ice_thickness_uncertainty'][:]
 	# Mask invalid data
 	mask = ~np.isnan(si_thickness)
 	filtered_si_thickness = np.where(mask, si_thickness, np.nan)
 
-	return lat, lon, filtered_si_thickness
+	return lat, lon, filtered_si_thickness, si_thickness_un
 
 
-lat_awi_oct, lon_awi_oct, si_thickness_awi_oct = get_awi(awi_oct_2021)
-lat_awi_nov, lon_awi_nov, si_thickness_awi_nov = get_awi(awi_nov_2021)
-lat_awi_dec, lon_awi_dec, si_thickness_awi_dec = get_awi(awi_dec_2021)
+lat_awi_oct, lon_awi_oct, si_thickness_awi_oct, si_thickness_awi_oct_unc = get_awi(awi_oct_2021)
+lat_awi_nov, lon_awi_nov, si_thickness_awi_nov, si_thickness_awi_nov_unc = get_awi(awi_nov_2021)
+lat_awi_dec, lon_awi_dec, si_thickness_awi_dec, si_thickness_awi_dec_unc = get_awi(awi_dec_2021)
 
-lat_cpom_oct, lon_cpom_oct, si_thickness_cpom_oct = get_cpom(cpom_oct_2021)
-lat_cpom_nov, lon_cpom_nov, si_thickness_cpom_nov = get_cpom(cpom_nov_2021)
-lat_cpom_dec, lon_cpom_dec, si_thickness_cpom_dec = get_cpom(cpom_dec_2021)
+lat_cpom_oct, lon_cpom_oct, si_thickness_cpom_oct, si_thickness_cpom_oct_unc  = get_cpom(cpom_oct_2021)
+lat_cpom_nov, lon_cpom_nov, si_thickness_cpom_nov, si_thickness_cpom_nov_unc = get_cpom(cpom_nov_2021)
+lat_cpom_dec, lon_cpom_dec, si_thickness_cpom_dec, si_thicknees_cpom_dec_unc = get_cpom(cpom_dec_2021)
 
-lat_cryo_oct, lon_cryo_oct, si_thickness_cryo_oct = get_cryo(cryo_oct_2021)
-lat_cryo_nov, lon_cryo_nov, si_thickness_cryo_nov = get_cryo(cryo_nov_2021)
-lat_cryo_dec, lon_cryo_dec, si_thickness_cryo_dec = get_cryo(cryo_dec_2021)
+lat_cryo_oct, lon_cryo_oct, si_thickness_cryo_oct, si_thickness_cryo_oct_unc = get_cryo(cryo_oct_2021)
+lat_cryo_nov, lon_cryo_nov, si_thickness_cryo_nov, si_thickness_cryo_nov_unc = get_cryo(cryo_nov_2021)
+lat_cryo_dec, lon_cryo_dec, si_thickness_cryo_dec, si_thickness_cryo_dec_unc = get_cryo(cryo_dec_2021)
 
-lat_w99_oct, lon_w99_oct, si_thickness_w99_oct = get_cryo_W99(cryo_oct_2021)
-lat_w99_nov, lon_w99_nov, si_thickness_w99_nov = get_cryo_W99(cryo_nov_2021)
-lat_w99_dec, lon_w99_dec, si_thickness_w99_dec = get_cryo_W99(cryo_dec_2021)
+lat_w99_oct, lon_w99_oct, si_thickness_w99_oct, si_thickness_w99_oct_unc = get_cryo_W99(cryo_oct_2021)
+lat_w99_nov, lon_w99_nov, si_thickness_w99_nov, si_thickness_w99_nov_unc = get_cryo_W99(cryo_nov_2021)
+lat_w99_dec, lon_w99_dec, si_thickness_w99_dec, si_thickness_w99_dec_unc = get_cryo_W99(cryo_dec_2021)
 
-lat_smos_oct, lon_smos_oct, si_thickness_smos_oct = get_smos(smos_oct_2021)
-lat_smos_nov, lon_smos_nov, si_thickness_smos_nov = get_smos(smos_nov_2021)
-lat_smos_dec, lon_smos_dec, si_thickness_smos_dec = get_smos(smos_dec_2021)
+lat_smos_oct, lon_smos_oct, si_thickness_smos_oct, si_thickness_smos_oct_unc = get_smos(smos_oct_2021)
+lat_smos_nov, lon_smos_nov, si_thickness_smos_nov, si_thickness_smos_nov_unc = get_smos(smos_nov_2021)
+lat_smos_dec, lon_smos_dec, si_thickness_smos_dec, si_thickness_smos_dec_unc = get_smos(smos_dec_2021)
+
+def reprojecting(lon, lat, proj=ccrs.NorthPolarStereo()):
+	transformer = proj.transform_points(ccrs.PlateCarree(), lon, lat)
+	x = transformer[..., 0]
+	y = transformer[..., 1]
+	return x, y
+
+x_awi_oct, y_awi_oct = reprojecting(lon_awi_oct, lat_awi_oct)
+x_awi_nov, y_awi_nov = reprojecting(lon_awi_nov, lat_awi_nov)
+x_awi_dec, y_awi_dec = reprojecting(lon_awi_dec, lat_awi_dec)	
+
+x_cpom_oct, y_cpom_oct = reprojecting(lon_cpom_oct, lat_cpom_oct)
+x_cpom_nov, y_cpom_nov = reprojecting(lon_cpom_nov, lat_cpom_nov)
+x_cpom_dec, y_cpom_dec = reprojecting(lon_cpom_dec, lat_cpom_dec)
+
+x_cryo_oct, y_cryo_oct = reprojecting(lon_cryo_oct, lat_cryo_oct)
+x_cryo_nov, y_cryo_nov = reprojecting(lon_cryo_nov, lat_cryo_nov)
+x_cryo_dec, y_cryo_dec = reprojecting(lon_cryo_dec, lat_cryo_dec)
+
+x_w99_oct, y_w99_oct = reprojecting(lon_w99_oct, lat_w99_oct)
+x_w99_nov, y_w99_nov = reprojecting(lon_w99_nov, lat_w99_nov)
+x_w99_dec, y_w99_dec = reprojecting(lon_w99_dec, lat_w99_dec)
+
+x_smos_oct, y_smos_oct = reprojecting(lon_smos_oct, lat_smos_oct)
+x_smos_nov, y_smos_nov = reprojecting(lon_smos_nov, lat_smos_nov)
+x_smos_dec, y_smos_dec = reprojecting(lon_smos_dec, lat_smos_dec)
 
 
 def interpolate_data(source_lat, source_lon, source_si, target_lat, target_lon):
@@ -140,21 +170,84 @@ def interpolate_data(source_lat, source_lon, source_si, target_lat, target_lon):
 	source_interp = griddata(source_points, source_values, target_points, method='nearest')
 	return source_interp.reshape(target_lat.shape)
 
+def resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radius=12500):
+	""" 
+	Resample source data onto a new grid using weighted average based on uncertainty.
+	If no valid data, leave as NaN.
+	If no points are found in the radius, set to NaN.
+	"""
+	target_tree = cKDTree(np.column_stack([x_target.ravel(), y_target.ravel()]))  # Tree for faster lookup
 
-cryo_interp_oct = interpolate_data(lat_cryo_oct, lon_cryo_oct, si_thickness_cryo_oct, lat_smos_oct, lon_smos_oct)
-cpom_interp_oct = interpolate_data(lat_cpom_oct, lon_cpom_oct, si_thickness_cpom_oct, lat_smos_oct, lon_smos_oct)
-awi_interp_oct  = interpolate_data(lat_awi_oct, lon_awi_oct, si_thickness_awi_oct, lat_smos_oct, lon_smos_oct)
-w99_interp_oct  = interpolate_data(lat_w99_oct, lon_w99_oct, si_thickness_w99_oct, lat_smos_oct, lon_smos_oct)
+	# Initialize arrays to store resampled data and weight sums
+	resampled_sit = np.full(x_target.shape, np.nan)
+	weights_sum = np.zeros(x_target.shape)
 
-cryo_interp_nov = interpolate_data(lat_cryo_nov, lon_cryo_nov, si_thickness_cryo_nov, lat_smos_nov, lon_smos_nov)
-cpom_interp_nov = interpolate_data(lat_cpom_nov, lon_cpom_nov, si_thickness_cpom_nov, lat_smos_nov, lon_smos_nov)
-awi_interp_nov  = interpolate_data(lat_awi_nov, lon_awi_nov, si_thickness_awi_nov, lat_smos_nov, lon_smos_nov)
-w99_interp_nov  = interpolate_data(lat_w99_nov, lon_w99_nov, si_thickness_w99_nov, lat_smos_nov, lon_smos_nov)
+	# Flatten all arrays for iteration
+	source_sit = source_sit.ravel()
+	source_sit_un = source_sit_un.ravel()
+	x_source = x_source.ravel()
+	y_source = y_source.ravel()
 
-cryo_interp_dec = interpolate_data(lat_cryo_dec, lon_cryo_dec, si_thickness_cryo_dec, lat_smos_dec, lon_smos_dec)
-cpom_interp_dec = interpolate_data(lat_cpom_dec, lon_cpom_dec, si_thickness_cpom_dec, lat_smos_dec, lon_smos_dec)
-awi_interp_dec  = interpolate_data(lat_awi_dec, lon_awi_dec, si_thickness_awi_dec, lat_smos_dec, lon_smos_dec)
-w99_interp_dec  = interpolate_data(lat_w99_dec, lon_w99_dec, si_thickness_w99_dec, lat_smos_dec, lon_smos_dec)
+	for i in range(len(source_sit)):
+		if np.isnan(source_sit[i]) or np.isnan(source_sit_un[i]):
+			continue  # Skip invalid data points
+		
+		indices = target_tree.query_ball_point([x_source[i], y_source[i]], radius)
+
+		if not indices:
+			continue  # If no neighbors are found, skip
+
+		weight = 1 / source_sit_un[i] if source_sit_un[i] != 0 else 0  # Avoid division by zero
+
+		for idx in indices:
+			if idx >= x_target.size:  # Ensure valid index
+				continue
+			
+			row, col = np.unravel_index(idx, x_target.shape)
+
+			# Avoid operations on uninitialized values
+			if np.isnan(resampled_sit[row, col]):
+				resampled_sit[row, col] = 0
+
+			# Weighted sum calculation
+			resampled_sit[row, col] = (resampled_sit[row, col] * weights_sum[row, col] + source_sit[i] * weight) / (weights_sum[row, col] + weight)
+			weights_sum[row, col] += weight
+
+	# Mask invalid values (no data points found)
+	resampled_sit[weights_sum == 0] = np.nan
+
+	return np.ma.masked_invalid(resampled_sit)
+
+
+cpom_resampled_sit_oct = resample_to_cryo_grid(x_cpom_oct, y_cpom_oct, si_thickness_cpom_oct, si_thickness_cpom_oct_unc, x_cryo_oct, y_cryo_oct)
+awi_resampled_sit_oct = resample_to_cryo_grid(x_awi_oct, y_awi_oct, si_thickness_awi_oct, si_thickness_awi_oct_unc, x_cryo_oct, y_cryo_oct)
+w99_resampled_sit_oct = resample_to_cryo_grid(x_w99_oct, y_w99_oct, si_thickness_w99_oct, si_thickness_w99_oct_unc, x_cryo_oct, y_cryo_oct)
+smos_resampled_sit_oct = resample_to_cryo_grid(x_smos_oct, y_smos_oct, si_thickness_smos_oct, si_thickness_smos_oct_unc, x_cryo_oct, y_cryo_oct)
+
+cpom_resampled_sit_nov = resample_to_cryo_grid(x_cpom_nov, y_cpom_nov, si_thickness_cpom_nov, si_thickness_cpom_nov_unc, x_cryo_nov, y_cryo_nov)
+awi_resampled_sit_nov = resample_to_cryo_grid(x_awi_nov, y_awi_nov, si_thickness_awi_nov, si_thickness_awi_nov_unc, x_cryo_nov, y_cryo_nov)
+w99_resampled_sit_nov = resample_to_cryo_grid(x_w99_nov, y_w99_nov, si_thickness_w99_nov, si_thickness_w99_nov_unc, x_cryo_nov, y_cryo_nov)
+smos_resampled_sit_nov = resample_to_cryo_grid(x_smos_nov, y_smos_nov, si_thickness_smos_nov, si_thickness_smos_nov_unc, x_cryo_nov, y_cryo_nov)
+
+cpom_resampled_sit_dec = resample_to_cryo_grid(x_cpom_dec, y_cpom_dec, si_thickness_cpom_dec, si_thicknees_cpom_dec_unc, x_cryo_dec, y_cryo_dec)
+awi_resampled_sit_dec = resample_to_cryo_grid(x_awi_dec, y_awi_dec, si_thickness_awi_dec, si_thickness_awi_dec_unc, x_cryo_dec, y_cryo_dec)
+w99_resampled_sit_dec = resample_to_cryo_grid(x_w99_dec, y_w99_dec, si_thickness_w99_dec, si_thickness_w99_dec_unc, x_cryo_dec, y_cryo_dec)
+smos_resampled_sit_dec = resample_to_cryo_grid(x_smos_dec, y_smos_dec, si_thickness_smos_dec, si_thickness_smos_dec_unc, x_cryo_dec, y_cryo_dec)
+
+#cryo_interp_oct = interpolate_data(lat_cryo_oct, lon_cryo_oct, si_thickness_cryo_oct, lat_smos_oct, lon_smos_oct)
+#cpom_interp_oct = interpolate_data(lat_cpom_oct, lon_cpom_oct, si_thickness_cpom_oct, lat_smos_oct, lon_smos_oct)
+#awi_interp_oct  = interpolate_data(lat_awi_oct, lon_awi_oct, si_thickness_awi_oct, lat_smos_oct, lon_smos_oct)
+#w99_interp_oct  = interpolate_data(lat_w99_oct, lon_w99_oct, si_thickness_w99_oct, lat_smos_oct, lon_smos_oct)
+#
+#cryo_interp_nov = interpolate_data(lat_cryo_nov, lon_cryo_nov, si_thickness_cryo_nov, lat_smos_nov, lon_smos_nov)
+#cpom_interp_nov = interpolate_data(lat_cpom_nov, lon_cpom_nov, si_thickness_cpom_nov, lat_smos_nov, lon_smos_nov)
+#awi_interp_nov  = interpolate_data(lat_awi_nov, lon_awi_nov, si_thickness_awi_nov, lat_smos_nov, lon_smos_nov)
+#w99_interp_nov  = interpolate_data(lat_w99_nov, lon_w99_nov, si_thickness_w99_nov, lat_smos_nov, lon_smos_nov)
+#
+#cryo_interp_dec = interpolate_data(lat_cryo_dec, lon_cryo_dec, si_thickness_cryo_dec, lat_smos_dec, lon_smos_dec)
+#cpom_interp_dec = interpolate_data(lat_cpom_dec, lon_cpom_dec, si_thickness_cpom_dec, lat_smos_dec, lon_smos_dec)
+#awi_interp_dec  = interpolate_data(lat_awi_dec, lon_awi_dec, si_thickness_awi_dec, lat_smos_dec, lon_smos_dec)
+#w99_interp_dec  = interpolate_data(lat_w99_dec, lon_w99_dec, si_thickness_w99_dec, lat_smos_dec, lon_smos_dec)
 
 
 
@@ -343,23 +436,23 @@ def barplot_all_months():
 	bin_centers = (bins[:-1] + bins[1:]) / 2  # Midpoints for plotting
 	
 	# Flatten arrays
-	cryo_flat_oct = cryo_interp_oct.flatten()
-	w99_flat_oct = w99_interp_oct.flatten()
-	cpom_flat_oct = cpom_interp_oct.flatten()
-	awi_flat_oct = awi_interp_oct.flatten()
-	sit_smos_oct = si_thickness_smos_oct.flatten()
+	cryo_flat_oct = si_thickness_cryo_oct.flatten()
+	w99_flat_oct = w99_resampled_sit_oct.flatten()
+	cpom_flat_oct = cpom_resampled_sit_oct.flatten()
+	awi_flat_oct = awi_resampled_sit_oct.flatten()
+	sit_smos_oct = smos_resampled_sit_oct.flatten()
  
-	cryo_flat_nov = cryo_interp_nov.flatten()
-	w99_flat_nov = w99_interp_nov.flatten()
-	cpom_flat_nov = cpom_interp_nov.flatten()
-	awi_flat_nov = awi_interp_nov.flatten()
-	sit_smos_nov = si_thickness_smos_nov.flatten()
+	cryo_flat_nov = si_thickness_cryo_nov.flatten()
+	w99_flat_nov = w99_resampled_sit_nov.flatten()
+	cpom_flat_nov = cpom_resampled_sit_nov.flatten()
+	awi_flat_nov = awi_resampled_sit_nov.flatten()
+	sit_smos_nov = smos_resampled_sit_nov.flatten()
  
-	cryo_flat_dec = cryo_interp_dec.flatten()
-	w99_flat_dec = w99_interp_dec.flatten()
-	cpom_flat_dec = cpom_interp_dec.flatten()
-	awi_flat_dec = awi_interp_dec.flatten()
-	sit_smos_dec = si_thickness_smos_dec.flatten()
+	cryo_flat_dec = si_thickness_cryo_dec.flatten()
+	w99_flat_dec = w99_resampled_sit_dec.flatten()
+	cpom_flat_dec = cpom_resampled_sit_dec.flatten()
+	awi_flat_dec = awi_resampled_sit_dec.flatten()
+	sit_smos_dec = smos_resampled_sit_dec.flatten()
 
 
 	valid_mask = ~np.isnan(cryo_flat_oct) & ~np.isnan(cpom_flat_oct) & ~np.isnan(awi_flat_oct) & ~np.isnan(sit_smos_oct) & ~np.isnan(w99_flat_oct)
@@ -691,10 +784,10 @@ if __name__ == '__main__':
 	#box_plot_comp(cryo_interp, si_thickness_smos_oct)
 	#single_box_plot_scatter(cryo_interp, si_thickness_smos_oct)
 	#multiple_box_plot_scatter(cryo_interp, cpom_interp, awi_interp, si_thickness_smos_dec)
-	#barplot(cryo_interp, w99_interp, cpom_interp, awi_interp, si_thickness_smos_dec)
-	#barplot_all_months()
-	#average_difference_target_source(cryo_interp, cpom_interp, awi_interp, si_thickness_smos_nov)
+	barplot(si_thickness_cryo_oct, w99_resampled_sit_oct, cpom_resampled_sit_oct, awi_resampled_sit_oct, smos_resampled_sit_oct)
+	barplot_all_months()
+	average_difference_target_source(si_thickness_cryo_oct, cpom_resampled_sit_oct, awi_resampled_sit_oct, smos_resampled_sit_oct)
 	#plot_normalized_cs2_vs_smos(cryo_interp_nov, si_thickness_smos_nov)
-	#heatmap_sea_ice_difference(cryo_interp_oct, w99_interp_oct, cpom_interp_oct, awi_interp_oct, si_thickness_smos_oct)
+	heatmap_sea_ice_difference(si_thickness_cryo_oct, w99_resampled_sit_oct, cpom_resampled_sit_oct, awi_resampled_sit_oct, smos_resampled_sit_oct)
 	#map_difference(cryo_interp_oct, si_thickness_smos_oct, lat_smos_dec, lon_smos_dec, "December")
-	histogram(cryo_interp_oct, si_thickness_smos_oct)
+	#histogram(cryo_interp_oct, si_thickness_smos_oct)
