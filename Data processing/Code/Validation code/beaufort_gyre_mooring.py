@@ -353,7 +353,7 @@ print("smos_sid shape:", smos_df["sea_ice_draft"].shape)
 print("smos_df shape:", smos_df.shape)
 
 
-def identify_cells_df(df, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
+def identify_cells_df(df, mooring_x, mooring_y, label, search_radius=RADIUS_RANGE):
 	"""
 	Identify satellite grid cells within a specified search radius of a mooring for each month,
 	and compute statistics (mean, median, std, min, max) of sea ice draft for that month.
@@ -385,6 +385,7 @@ def identify_cells_df(df, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
 		 - std_draft
 		 - min_draft
 		 - max_draft
+		 - suspicious (1 if more than 25% of valid cells > 1m, else 0)
 	"""
 	results = []
 	
@@ -407,22 +408,37 @@ def identify_cells_df(df, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
 		
 		# Remove NaNs from the draft values
 		sid_valid = sid_values[~np.isnan(sid_values)]
+		#print(f"number of valid cells for {label}: {len(sid_valid)}")
+
+		stats = {
+			"date": row["date"],
+			"mean_draft": np.nan,
+			"median_draft": np.nan,
+			"std_draft": np.nan,
+			"min_draft": np.nan,
+			"max_draft": np.nan,
+			"suspicious": 0  # Default to not suspicious
+		}
 		
 		if len(sid_valid) > 0:
-			stats = {
-				"mean_draft": np.mean(sid_valid),
-				"median_draft": np.median(sid_valid),
-				"std_draft": np.std(sid_valid),
-				"min_draft": np.min(sid_valid),
-				"max_draft": np.max(sid_valid)
-			}
+			stats["mean_draft"] = np.mean(sid_valid)
+			stats["median_draft"] = np.median(sid_valid)
+			stats["std_draft"] = np.std(sid_valid)
+			stats["min_draft"] = np.min(sid_valid)
+			stats["max_draft"] = np.max(sid_valid)
+			
+   			# Suspicious if more than 25% of valid cells > 1m
+			frac_above_1m = np.sum(sid_valid >= 1.0) / len(sid_valid)
+			if frac_above_1m > 0.40: #and np.mean(sid_valid) > 0.8
+				stats["suspicious"] = 1
 		else:
 			stats = {
 				"mean_draft": np.nan,
 				"median_draft": np.nan,
 				"std_draft": np.nan,
 				"min_draft": np.nan,
-				"max_draft": np.nan
+				"max_draft": np.nan,
+				"suspicious": 0  # Default to not suspicious
 			}
 		
 		stats["date"] = row["date"]  # assuming the date column exists in df
@@ -430,13 +446,13 @@ def identify_cells_df(df, mooring_x, mooring_y, search_radius=RADIUS_RANGE):
 		
 	return pd.DataFrame(results)
 
-cryosat_stats_A = identify_cells_df(cryosat_df, mooring_a_x, mooring_a_y)
-cryosat_stats_B = identify_cells_df(cryosat_df, mooring_b_x, mooring_b_y)
-cryosat_stats_D = identify_cells_df(cryosat_df, mooring_d_x, mooring_d_y)
+cryosat_stats_A = identify_cells_df(cryosat_df, mooring_a_x, mooring_a_y, "")
+cryosat_stats_B = identify_cells_df(cryosat_df, mooring_b_x, mooring_b_y, "")
+cryosat_stats_D = identify_cells_df(cryosat_df, mooring_d_x, mooring_d_y, "")
 
-smos_stats_A = identify_cells_df(smos_df, mooring_a_x, mooring_a_y)
-smos_stats_B = identify_cells_df(smos_df, mooring_b_x, mooring_b_y)
-smos_stats_D = identify_cells_df(smos_df, mooring_d_x, mooring_d_y)
+smos_stats_A = identify_cells_df(smos_df, mooring_a_x, mooring_a_y, "SMOS A")
+smos_stats_B = identify_cells_df(smos_df, mooring_b_x, mooring_b_y, "SMOS B")
+smos_stats_D = identify_cells_df(smos_df, mooring_d_x, mooring_d_y, "SMOS D")
 
 mooring_A_draft = monthly_stats_A["mean_draft"]
 cryosat_A_draft = cryosat_stats_A["mean_draft"]
@@ -454,7 +470,7 @@ def mooring_draft_range(mooring_df, satellite_df):
 	valid_dates = mooring_df_f["date"].unique()
 	satellite_df_f = satellite_df[satellite_df["date"].isin(valid_dates)]
 	return mooring_df_f, satellite_df_f
-
+ 
 
 def times_series_all():
 	monthly_stats_A["date"] = pd.to_datetime(monthly_stats_A["date"])
@@ -477,6 +493,10 @@ def times_series_all():
 	_, smB_f = mooring_draft_range(monthly_stats_B, smos_stats_B)
 	_, smD_f = mooring_draft_range(monthly_stats_D, smos_stats_D)
  
+	smA_f_suspicious = smA_f[smA_f["suspicious"] == 1]
+	smB_f_suspicious = smB_f[smB_f["suspicious"] == 1]
+	smD_f_suspicious = smD_f[smD_f["suspicious"] == 1]
+ 
 	# 3 subplots for each mooring
 	fig, ax = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
 	
@@ -484,6 +504,7 @@ def times_series_all():
 	ax[0].plot(msA_f["date"], msA_f["mean_draft"], marker="d",label="Mooring Ice Draft", color="black", zorder = 0)
 	ax[0].scatter(csA_f["date"], csA_f["mean_draft"], label="CS2 UiT Ice Draft", color="teal", zorder = 1)
 	ax[0].scatter(smA_f["date"], smA_f["mean_draft"], label="SMOS Ice Draft", color="salmon", zorder = 2)
+	ax[0].scatter(smA_f_suspicious["date"], smA_f_suspicious["mean_draft"], color="firebrick", label="Suspicious SMOS", zorder=3, marker="x")
 	for date in msA_f["date"]:
 		ax[0].axvline(date, linestyle='--', color='gray', alpha=0.5, linewidth=1)
 	ax[0].set_ylabel("Draft (m)")
@@ -495,6 +516,7 @@ def times_series_all():
 	ax[1].plot(msB_f["date"], msB_f["mean_draft"], marker="d", color="black", zorder = 0)
 	ax[1].scatter(csB_f["date"], csB_f["mean_draft"], color="teal", zorder = 1)
 	ax[1].scatter(smB_f["date"], smB_f["mean_draft"], color="salmon", zorder = 2)
+	ax[1].scatter(smB_f_suspicious["date"], smB_f_suspicious["mean_draft"], color="firebrick", label="Suspicious SMOS", zorder=3, marker="x")
 	for date in msB_f["date"]:
 		ax[1].axvline(date, linestyle='--', color='gray', alpha=0.5, linewidth=1)
 	ax[1].set_ylabel("Draft (m)")
@@ -505,6 +527,7 @@ def times_series_all():
 	ax[2].plot(msD_f["date"], msD_f["mean_draft"], marker="d", color="black", zorder = 0)
 	ax[2].scatter(csD_f["date"], csD_f["mean_draft"], color="teal", zorder = 1)
 	ax[2].scatter(smD_f["date"], smD_f["mean_draft"], color="salmon", zorder = 2)
+	ax[2].scatter(smD_f_suspicious["date"], smD_f_suspicious["mean_draft"], color="firebrick", label="Suspicious SMOS", zorder=3, marker="x")
 	for date in msD_f["date"]:
 		ax[2].axvline(date, linestyle='--', color='gray', alpha=0.5, linewidth=1)
 	ax[2].set_ylabel("Draft (m)")
@@ -727,7 +750,7 @@ def compute_monthly_anomalies(draft_data, dates):
 	# Compute the monthly mean (climatology) across all years.
 	# The transform('mean') call replicates the monthly mean for each row.
 	df["monthly_mean"] = df.groupby("month")["draft"].transform("mean")
-	print(df["monthly_mean"])
+	#print(df["monthly_mean"])
 	# Calculate anomalies: difference from the monthly mean.
 	df["anomaly"] = df["draft"] - df["monthly_mean"]
 	
@@ -761,21 +784,6 @@ def draft_anomalies():
 	smos_B_anom = compute_monthly_anomalies(smos_B_draft_s, smos_stats_B["date"])
 	mooring_D_anom_s = compute_monthly_anomalies(mooring_D_draft_S, monthly_stats_D["date"])
 	smos_D_anom = compute_monthly_anomalies(smos_D_draft_s, smos_stats_D["date"])
- 
- 
-	#mooring_A_anom_c = mooring_A_draft_C - np.nanmean(mooring_A_draft_C)
-	#cryosat_A_anom = cryosat_A_draft_c - np.nanmean(cryosat_A_draft_c)
-	#mooring_B_anom_c = mooring_B_draft_C - np.nanmean(mooring_B_draft_C)
-	#cryosat_B_anom = cryosat_B_draft_c - np.nanmean(cryosat_B_draft_c)
-	#mooring_D_anom_c = mooring_D_draft_C - np.nanmean(mooring_D_draft_C)
-	#cryosat_D_anom = cryosat_D_draft_c - np.nanmean(cryosat_D_draft_c)
-#
-	#smos_A_anom = smos_A_draft_s - np.nanmean(smos_A_draft_s)
-	#mooring_A_anom_s = mooring_A_draft_S - np.nanmean(mooring_A_draft_S)
-	#smos_B_anom = smos_B_draft_s- np.nanmean(smos_B_draft_s)
-	#mooring_B_anom_s = mooring_B_draft_S - np.nanmean(mooring_B_draft_S)
-	#smos_D_anom = smos_D_draft_s - np.nanmean(smos_D_draft_s)
-	#mooring_D_anom_s = mooring_D_draft_S - np.nanmean(mooring_D_draft_S)
 
 	fig, ax = plt.subplots(2, 3, figsize=(10, 10), sharex=True)
 
@@ -826,28 +834,28 @@ def histogram():
 	fig, ax = plt.subplots(2, 3, figsize=(12, 8), sharex=True, sharey=True)
 
 	# Mooring A
-	ax[0, 0].hist(mooring_A_draft_C, bins=20, color="midnightblue", label="Mooring", zorder = 1)
-	ax[0, 0].hist(cryosat_A_draft_c, bins=20, edgecolor="teal", fill=False, hatch = "xx",label="CryoSat-2", zorder = 2)
+	ax[0, 0].hist(mooring_A_draft_C, bins=10, color="#4D4D4D", label="Mooring", zorder = 1)
+	ax[0, 0].hist(cryosat_A_draft_c, bins=10, edgecolor="#3D7E9A", fill=False, hatch = "xx",label="CryoSat-2", zorder = 2)
 	ax[0, 0].set_title("Mooring A")
 	ax[0, 0].set_ylabel("Count")
 	ax[0, 0].grid(True, zorder = 0)
 	ax[0, 0].legend()
 
 	# Mooring B
-	ax[0, 1].hist(mooring_B_draft_C, bins=20, color="midnightblue", zorder = 1)
-	ax[0, 1].hist(cryosat_B_draft_c, bins=20, edgecolor="teal", fill=False, hatch = "xx", zorder = 2)
+	ax[0, 1].hist(mooring_B_draft_C, bins=10, color="#4D4D4D", zorder = 1)
+	ax[0, 1].hist(cryosat_B_draft_c, bins=10, edgecolor="#3D7E9A", fill=False, hatch = "xx", zorder = 2)
 	ax[0, 1].grid(True, zorder = 0)
 	ax[0, 1].set_title("Mooring B")
 
 	# Mooring D
-	ax[0, 2].hist(mooring_D_draft_C, bins=20, color="midnightblue", zorder = 1)
-	ax[0, 2].hist(cryosat_D_draft_c, bins=20, edgecolor="teal", fill=False, hatch = "xx", zorder = 2)
+	ax[0, 2].hist(mooring_D_draft_C, bins=10, color="#4D4D4D", zorder = 1)
+	ax[0, 2].hist(cryosat_D_draft_c, bins=10, edgecolor="#3D7E9A", fill=False, hatch = "xx", zorder = 2)
 	ax[0, 2].grid(True, zorder = 0)
 	ax[0, 2].set_title("Mooring D")
 
 	# SMOS Mooring A
-	ax[1, 0].hist(mooring_A_draft_S, bins=20, color="midnightblue", label="Mooring", zorder = 1)
-	ax[1, 0].hist(smos_A_draft_s, bins=20, edgecolor="forestgreen", fill=False, hatch = "xx", label="SMOS", zorder = 2)
+	ax[1, 0].hist(mooring_A_draft_S, bins=10, color="#4D4D4D", label="Mooring", zorder = 1)
+	ax[1, 0].hist(smos_A_draft_s, bins=10, edgecolor="#E07A5F", fill=False, hatch = "xx", label="SMOS", zorder = 2)
 	ax[1, 0].grid(True, zorder = 0)
 	ax[1, 0].set_xlabel("Ice draft [m]")
 	ax[1, 0].set_ylabel("Count")
@@ -855,14 +863,14 @@ def histogram():
  
  
 	# SMOS Mooring B
-	ax[1, 1].hist(mooring_B_draft_S, bins=20, color="midnightblue", zorder = 1)
-	ax[1, 1].hist(smos_B_draft_s, bins=20, edgecolor="forestgreen", fill=False, hatch = "xx", zorder = 2)
+	ax[1, 1].hist(mooring_B_draft_S, bins=10, color="#4D4D4D", zorder = 1)
+	ax[1, 1].hist(smos_B_draft_s, bins=10, edgecolor="#E07A5F", fill=False, hatch = "xx", zorder = 2)
 	ax[1, 1].grid(True, zorder = 0)
 	ax[1, 1].set_xlabel("Ice draft [m]")	
  
 	# SMOS Mooring D
-	ax[1, 2].hist(mooring_D_draft_S, bins=20, color="midnightblue", zorder = 1)
-	ax[1, 2].hist(smos_D_draft_s, bins=20, edgecolor="forestgreen", fill=False, hatch = "xx", zorder = 2)
+	ax[1, 2].hist(mooring_D_draft_S, bins=10, color="#4D4D4D", zorder = 1)
+	ax[1, 2].hist(smos_D_draft_s, bins=10, edgecolor="#E07A5F", fill=False, hatch = "xx", zorder = 2)
 	ax[1, 2].grid(True, zorder = 0)
 	ax[1, 2].set_xlabel("Ice draft [m]")
  
@@ -873,7 +881,7 @@ def histogram():
  
  
 if __name__ == "__main__":
-	times_series_all()
+	#times_series_all()
 	#single_anomaly()
 	#draft_anomalies()
-	#histogram()
+	histogram()
