@@ -9,7 +9,7 @@ import cartopy.crs as ccrs
 from scipy.spatial import cKDTree
 from sklearn.linear_model import LinearRegression
 import seaborn as sns
-from matplotlib.ticker import PercentFormatter
+from mpl_toolkits.basemap import Basemap
 
 """ 
 Plan 
@@ -464,6 +464,32 @@ mooring_D_draft = monthly_stats_D["mean_draft"]
 cryosat_D_draft = cryosat_stats_D["mean_draft"]
 smos_D_draft = smos_stats_D["mean_draft"]
 
+
+def mooring_locations():
+    plt.figure(figsize=(10, 10))
+    
+    m = Basemap(projection='npstere', resolution='i', lat_0=90, lon_0=0,
+                boundinglat=60, width=6e6, height=6e6)
+    m.bluemarble()
+
+    # Convert mooring coordinates to map projection
+    x_a, y_a = m(MOORING_A_LON, MOORING_A_LAT)
+    x_b, y_b = m(MOORING_B_LON, MOORING_B_LAT)
+    x_d, y_d = m(MOORING_D_LON, MOORING_D_LAT)
+
+    # Plot mooring locations
+    m.scatter([x_a, x_b, x_d], [y_a, y_b, y_d], s=100, marker='o', edgecolors='red', facecolors='none', linewidth=1)
+    m.scatter([x_a, x_b, x_d], [y_a, y_b, y_d], s=30, marker = 'o', c="red", label='BGEP moorings')
+
+    # Add labels
+    plt.text(x_a + 10000, y_a + 10000, 'A', fontsize=12, fontweight='bold', color='white')
+    plt.text(x_b + 10000, y_b + 10000, 'B', fontsize=12, fontweight='bold', color='white')
+    plt.text(x_d + 10000, y_d + 10000, 'D', fontsize=12, fontweight='bold', color='white')
+
+    plt.title("Mooring Locations")
+    plt.legend()
+    plt.show()
+
 def mooring_draft_range(mooring_df, satellite_df):
 	mask = (mooring_df["mean_draft"] >= 0) & (mooring_df["mean_draft"] <= 1)
 	mooring_df_f = mooring_df[mask]
@@ -881,7 +907,8 @@ def histogram():
  
  
 if __name__ == "__main__":
+    mooring_locations()
 	#times_series_all()
 	#single_anomaly()
 	#draft_anomalies()
-	histogram()
+	#histogram()
