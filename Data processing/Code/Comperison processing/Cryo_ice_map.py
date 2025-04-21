@@ -163,10 +163,10 @@ def box_plot():
 
 if __name__ == "__main__":
     lat, lon, si_thickness = get_data(oct_path)
-    #print_nc_metadata(oct_path)
-    print(si_thickness)
+    print_nc_metadata(oct_path)
+    #print(si_thickness)
     #write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness)
-    single_figure(lat, lon, si_thickness)
+    #single_figure(lat, lon, si_thickness)
     #single_figure(filtered_lat, filtered_lon, filtered_si_thickness)
     #zoomed_figure(filtered_lat, filtered_lon, filtered_si_thickness, filtered_si_thickness_uncertainty)
     #compare_months_LARM(oct_path, nov_path, dec_path)

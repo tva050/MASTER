@@ -496,7 +496,7 @@ def mooring_draft_range(mooring_df, satellite_df):
 	valid_dates = mooring_df_f["date"].unique()
 	satellite_df_f = satellite_df[satellite_df["date"].isin(valid_dates)]
 	return mooring_df_f, satellite_df_f
- 
+
 
 def times_series_all():
 	monthly_stats_A["date"] = pd.to_datetime(monthly_stats_A["date"])
