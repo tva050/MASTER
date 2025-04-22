@@ -135,6 +135,33 @@ lat_smos_nov, lon_smos_nov, si_thickness_smos_nov, si_thickness_smos_nov_unc = g
 lat_smos_dec, lon_smos_dec, si_thickness_smos_dec, si_thickness_smos_dec_unc = get_smos(smos_dec_2021)
 
 def reprojecting(lon, lat, proj=ccrs.NorthPolarStereo()):
+	""" 
+	Reprojects geographical coordinates (longitude and latitude) to a specified map projection.
+	
+ 	Parameters
+	----------
+	lon : array-like
+		Array of longitude values in degrees.
+	lat : array-like
+		Array of latitude values in degrees.
+	proj : cartopy.crs.Projection, optional
+		The target map projection to which the coordinates will be reprojected.
+		Defaults to `ccrs.NorthPolarStereo()`.
+  
+	Returns
+	-------
+	x : numpy.ndarray
+		Array of x-coordinates in the target projection.
+	y : numpy.ndarray
+		Array of y-coordinates in the target projection.
+  
+	Notes
+	-----
+	This function uses the `transform_points` method from the `cartopy.crs` module
+	to perform the reprojection. The input coordinates are assumed to be in the
+	PlateCarree (geographical) projection.
+	"""
+
 	transformer = proj.transform_points(ccrs.PlateCarree(), lon, lat)
 	x = transformer[..., 0]
 	y = transformer[..., 1]

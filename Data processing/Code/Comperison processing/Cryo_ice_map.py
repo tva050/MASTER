@@ -11,6 +11,7 @@ oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processi
 nov_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_11_v3.nc"
 dec_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_12_v3.nc"
 
+awi = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\AWI product\awi-siral-l3c-sithick-cryosat2-rep-nh_25km_ease2-202110-fv2p6.nc"
 
 def get_data(path):
     data = nc.Dataset(path)
@@ -162,8 +163,8 @@ def box_plot():
     plt.show()
 
 if __name__ == "__main__":
-    lat, lon, si_thickness = get_data(oct_path)
-    print_nc_metadata(oct_path)
+    #lat, lon, si_thickness = get_data(oct_path)
+    print_nc_metadata(awi)
     #print(si_thickness)
     #write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness)
     #single_figure(lat, lon, si_thickness)
