@@ -7,6 +7,7 @@ import pandas as pd
 import cartopy.crs as ccrs
 import seaborn as sns
 from mpl_toolkits.basemap import Basemap
+import matplotlib.path as mpath
 
 
 import warnings
@@ -215,30 +216,37 @@ def hist_cryo_smos_oib(cryo_sit, oib_sit, smos_sit):
 	plt.grid(True, linestyle="--", alpha=0.5)
 	plt.show()
 
+
 def plot_fligth_paths(cryo_x, cryo_y, oib_2011, oib_2012, oib_2013):
 	oib_2011_lat, oib_2011_lon, oib_2011_sit, oib_2011_sit_un = extract_all_oib(oib_2011)
 	oib_2012_lat, oib_2012_lon, oib_2012_sit, oib_2012_sit_un = extract_all_oib(oib_2012)
 	oib_2013_lat, oib_2013_lon, oib_2013_sit, oib_2013_sit_un = extract_all_oib(oib_2013)
  
-	plt.figure(figsize=(10, 10))
-	m = Basemap(projection='npstere', resolution='i', lat_0=90, lon_0=0, boundinglat=60, width=6e6, height=6e6)
-	m.drawcoastlines()
-	m.drawcountries()
-	m.bluemarble()
-
-	x_11, y_11 = m(oib_2011_lon, oib_2011_lat)
-	x_12, y_12 = m(oib_2012_lon, oib_2012_lat)
-	x_13, y_13 = m(oib_2013_lon, oib_2013_lat)
+	fig = plt.figure(figsize=(10, 10))
+	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
+	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
  
-	m.scatter(x_11, y_11, c='orange', s=1, label='OIB 2011')
-	m.scatter(x_12, y_12, c='cyan', s=1, label='OIB 2012')
-	m.scatter(x_13, y_13, c='magenta', s=1, label='OIB 2013')
+	ax.coastlines()
+	ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1, zorder=2)
+	ax.add_feature(cfeature.OCEAN, facecolor="lightgray", alpha=0.5, zorder=1)
+	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
+	ax.add_feature(cfeature.RIVERS, edgecolor='lightgray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=4)
+	ax.add_feature(cfeature.COASTLINE, color = "black", linewidth=0.1, zorder=5)
+	ax.gridlines(draw_labels=True, color="dimgray", zorder = 7)
  
-	plt.title("OIB Flight Paths")
+	sc1 = ax.scatter(oib_2011_lon, oib_2011_lat, c='#72259b', s=1, label='OIB 2011', transform=ccrs.PlateCarree(), zorder = 6)
+	sc2 = ax.scatter(oib_2012_lon, oib_2012_lat, c='#2f89c5', s=1, label='OIB 2012', transform=ccrs.PlateCarree(), zorder = 6)
+	sc3 = ax.scatter(oib_2013_lon, oib_2013_lat, c='#41d03b', s=1, label='OIB 2013', transform=ccrs.PlateCarree(), zorder = 6)
+ 
+	theta = np.linspace(0, 2*np.pi, 100)
+	center, radius = [0.5, 0.5], 0.5
+	verts = np.vstack([np.sin(theta), np.cos(theta)]).T
+	circle = mpath.Path(verts * radius + center)
+	ax.set_boundary(circle, transform=ax.transAxes)
+ 
 	plt.legend(markerscale = 5)
 	plt.show()
 	
-
 def plot_gridded_data(x_cryo, y_cryo, gridded_oib_sit):
 	fig = plt.figure(figsize=(10, 10))
 	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
@@ -522,7 +530,7 @@ def differences(cryo_sit, smos_sit, oib_sit):
  
 
 if __name__ == "__main__":
-	#lot_fligth_paths(x_cryo, y_cryo, oib_paths_2011, oib_paths_2012, oib_paths_2013)	
+	plot_fligth_paths(x_cryo, y_cryo, oib_paths_2011, oib_paths_2012, oib_paths_2013)	
  
  	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, cryo_sit, 'CryoSat-2 vs OiB')
 	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, resampled_smos_sit, 'SMOS vs OiB') 
@@ -532,6 +540,6 @@ if __name__ == "__main__":
  	#hist_cryo_smos_oib(cryo_sit, resampled_oib_sit, resampled_smos_sit)
 	#boxplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
 	#barplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)
-	heatmap(cryo_sit, resampled_smos_sit, resampled_oib_sit)
+	#heatmap(cryo_sit, resampled_smos_sit, resampled_oib_sit)
 	#differences(cryo_sit, resampled_smos_sit, resampled_oib_sit)
  

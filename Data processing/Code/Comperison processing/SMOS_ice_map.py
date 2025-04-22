@@ -43,7 +43,7 @@ def get_data(folder_path):
             file_path = os.path.join(folder_path, filename)
             with nc.Dataset(file_path, "r") as dataset:
                 si_thickness = dataset.variables['sea_ice_thickness'][:]
-                
+                # apply land mask, used for smos data to remove land points 
                 if 'land' in dataset.variables:
                     land_mask = dataset.variables['land'][:]  # Extract first time step
                 else:
