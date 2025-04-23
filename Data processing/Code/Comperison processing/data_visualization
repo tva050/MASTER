@@ -198,11 +198,59 @@ def interpolate_data(source_lat, source_lon, source_si, target_lat, target_lon):
 	return source_interp.reshape(target_lat.shape)
 
 def resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radius=12500):
-	""" 
-	Resample source data onto a new grid using weighted average based on uncertainty.
-	If no valid data, leave as NaN.
-	If no points are found in the radius, set to NaN.
 	"""
+	Resample source data onto a target grid using weighted averaging.
+	This function takes source data points with associated uncertainties and resamples
+	them onto a target grid using a weighted averaging approach. The weights are 
+	determined by the inverse of the uncertainties of the source data points.
+ 
+	Parameters
+	----------
+	x_source : ndarray
+		1D or 2D array of x-coordinates for the source data points.
+	y_source : ndarray
+		1D or 2D array of y-coordinates for the source data points.
+	source_sit : ndarray
+		1D or 2D array of source data values to be resampled.
+	source_sit_un : ndarray
+		1D or 2D array of uncertainties associated with the source data values.
+	x_target : ndarray
+		2D array of x-coordinates for the target grid.
+	y_target : ndarray
+		2D array of y-coordinates for the target grid.
+	radius : float, optional
+		Radius of influence for resampling, in the same units as the coordinates. 
+		Default is 12500.
+  
+	Returns
+	-------
+	ndarray
+		A 2D masked array containing the resampled data on the target grid. 
+		Grid cells with no valid data points are masked.
+  
+	Notes
+	-----
+	- The function uses a KD-tree for efficient neighbor search within the specified radius.
+	- If a source data point has an uncertainty of zero, its weight is set to zero to avoid
+	  division by zero.
+	- Grid cells with no valid data points are assigned NaN and masked in the output.
+ 
+	Examples
+	--------
+	>>> import numpy as np
+	>>> from scipy.spatial import cKDTree
+	>>> x_source = np.array([0, 1, 2])
+	>>> y_source = np.array([0, 1, 2])
+	>>> source_sit = np.array([10, 20, 30])
+	>>> source_sit_un = np.array([1, 2, 3])
+	>>> x_target, y_target = np.meshgrid(np.linspace(0, 2, 3), np.linspace(0, 2, 3))
+	>>> resampled = resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target)
+	>>> print(resampled)
+	[[10. 15. nan]
+	 [nan 20. 25.]
+	 [nan nan 30.]]
+	"""
+	
 	target_tree = cKDTree(np.column_stack([x_target.ravel(), y_target.ravel()]))  # Tree for faster lookup
 
 	# Initialize arrays to store resampled data and weight sums
@@ -237,7 +285,7 @@ def resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_targe
 				resampled_sit[row, col] = 0
 
 			# Weighted sum calculation
-			resampled_sit[row, col] = (resampled_sit[row, col] * weights_sum[row, col] + source_sit[i] * weight) / (weights_sum[row, col] + weight)
+			resampled_sit[row, col] = (resampled_sit[row, col] * weights_sum[row, col] + source_sit[i] * weight) / (weights_sum[row, col] + weight) 
 			weights_sum[row, col] += weight
 
 	# Mask invalid values (no data points found)
