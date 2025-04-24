@@ -370,6 +370,19 @@ def month_box_plot_scatter(cryo_interp, cpom_interp, awi_interp, smos_si):
 	plt.show()
  
 def multiple_box_plot_scatter_3x3(cryo_data, w99_data, awi_data, cpom_data, smos_data, month_names=['October', 'November', 'December']): # missing values on y axis
+	plt.rcParams.update({
+		'font.family':      'serif',
+		'font.size':         12,
+		'axes.titlesize':    14,
+		'axes.labelsize':    12,
+		'xtick.labelsize':   10,
+		'ytick.labelsize':   10,
+		'legend.fontsize':   10,
+		'figure.titlesize':  14,
+		'legend.frameon':   False,
+		'lines.linewidth':  1.2,
+		'lines.markersize': 5,
+	})
 	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
 	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
 
@@ -405,7 +418,8 @@ def multiple_box_plot_scatter_3x3(cryo_data, w99_data, awi_data, cpom_data, smos
 				binned_data,
 				labels=bin_labels,
 				medianprops=dict(color='black'),
-				patch_artist=True
+				patch_artist=True,
+				showfliers=False
 			)
 
 			for patch in bp['boxes']:
@@ -422,13 +436,14 @@ def multiple_box_plot_scatter_3x3(cryo_data, w99_data, awi_data, cpom_data, smos
 
 			if row == 0:
 				ax.set_title(month_names[col])
-			if row == 2:
-				ax.set_xlabel("SMOS SIT [m]")
+			if row == 3:
+				ax.set_xlabel("SMOS SIT [m]", fontweight='bold')
+				ax.set_xticks(range(1, len(bin_labels) + 1))
 			else:
 				ax.set_xticklabels([])  # Hide x-axis labels on top/middle rows
 
 			if col == 0:
-				ax.set_ylabel(f"{products[row]} SIT [m]")
+				ax.set_ylabel(f"{products[row]} SIT [m]", fontweight='bold')
 			#else:
 			#    ax.set_yticklabels([])  # Hide y-axis labels on non-left plots
 
@@ -437,6 +452,7 @@ def multiple_box_plot_scatter_3x3(cryo_data, w99_data, awi_data, cpom_data, smos
 				ax.legend([products[row]], loc='upper left', frameon=False)
 
 	plt.tight_layout()
+	plt.savefig('boxplot_3x3.png', dpi=300, bbox_inches='tight')
 	plt.show()
 
 
@@ -577,8 +593,21 @@ def bar_with_histograms(
 		(cryo_nov, w99_nov, cpom_nov, awi_nov, smos_nov),
 		(cryo_dec, w99_dec, cpom_dec, awi_dec, smos_dec),
 	]
+	plt.rcParams.update({
+		'font.family':      'serif',
+		'font.size':         12,
+		'axes.titlesize':    14,
+		'axes.labelsize':    12,
+		'xtick.labelsize':   10,
+		'ytick.labelsize':   10,
+		'legend.fontsize':   10,
+		'figure.titlesize':  14,
+		'legend.frameon':   False,
+		'lines.linewidth':  1.2,
+		'lines.markersize': 5,
+	})
 
-	fig = plt.figure(figsize=(18,10))
+	fig = plt.figure(figsize=(6.5,6.5*0.62))
 	# outer grid: 2 rows (bars, hists), 3 columns (months)
 	outer = fig.add_gridspec(2, 3, height_ratios=[2,1], hspace=0.2, wspace=0.15) # hspace defines space between rows, wspace between columns for 
 
@@ -622,7 +651,7 @@ def bar_with_histograms(
 		ax.set_xlabel('SMOS SIT [m]')
 		if i == 0:
 			ax.set_ylabel('Mean SIT [m]')
-			ax.legend(fontsize=9)
+			ax.legend()
 		ax.grid(axis='y', linestyle='--', alpha=0.5)
 
 		# ---- 2) Prepare mask for histograms (SMOS between 0–1 m) ----
@@ -636,7 +665,7 @@ def bar_with_histograms(
 		axL.hist(cryo_m, bins=bin_edges, edgecolor='salmon', linewidth=1, fill=True, color='salmon', alpha=0.5, hatch='xx', zorder=1, label='UiT')
 		axL.hist(w99_m,  bins=bin_edges, edgecolor='skyblue', fill=False, hatch='xx', zorder=2, label='W99')
 		if i == 0:
-			axL.legend(fontsize=8)
+			axL.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', ncols=3, mode="expand", borderaxespad=0., handletextpad=0.3)
 		axL.set_xlabel('SIT [m]')
 		if i == 0:
 			axL.set_ylabel('Count')
@@ -650,14 +679,138 @@ def bar_with_histograms(
 		axR.set_xlabel('SIT [m]')
 		axR.grid(linestyle='--')
 		if i == 0:
-			axR.legend(fontsize=8)
+			axR.legend(bbox_to_anchor=(0., 1.02, 1., .102), loc='lower left', ncols=3, mode="expand", borderaxespad=0.0, handletextpad=0.3)
 
 		# log‐scale y for both small histograms
 		axL.set_yscale('log')
 		axR.set_yscale('log')
 
-	plt.tight_layout()
+	#plt.tight_layout()
+	fig.savefig('bar_with_histograms.png', format="pdf", bbox_inches='tight')
 	plt.show()
+
+def bar_with_histograms_1(
+	cryo_oct, cryo_nov, cryo_dec,
+	w99_oct,  w99_nov,  w99_dec,
+	cpom_oct, cpom_nov, cpom_dec,
+	awi_oct,  awi_nov,  awi_dec,
+	smos_oct, smos_nov, smos_dec,
+	figsize=(6.5, 6.5 * 0.62),
+	bar_bins=np.linspace(0,1,6),
+	bar_width=0.03,
+	hist_bins=np.linspace(0,1,21)
+):
+	"""
+	Create a 3-column figure: the top row are bar plots of mean SIT binned by SMOS;
+	the bottom row has two side-by-side histograms (Cryo+W99 and AWI+CPOM) per month.
+
+	Parameters:
+	  * *_oct/_nov/_dec: 2D arrays of thickness for each dataset/month
+	  * figsize: figure size in inches (default full-text width golden ratio)
+	  * bar_bins: array of edges for the bar-plot bins
+	  * bar_width: width of each bar
+	  * hist_bins: array of edges for the histogram bins
+	"""
+	plt.rcParams.update({
+	'font.family':      'serif',
+	'font.size':         12,
+	'axes.titlesize':    14,
+	'axes.labelsize':    12,
+	'xtick.labelsize':   10,
+	'ytick.labelsize':   10,
+	'legend.fontsize':   10,
+	'figure.titlesize':  14,
+	'legend.frameon':    False,
+	'lines.linewidth':   1.2,
+	'lines.markersize':  5,
+	})
+	months = ['October','November','December']
+	datasets = [
+		(cryo_oct, w99_oct, cpom_oct, awi_oct, smos_oct),
+		(cryo_nov, w99_nov, cpom_nov, awi_nov, smos_nov),
+		(cryo_dec, w99_dec, cpom_dec, awi_dec, smos_dec)
+	]
+
+	fig = plt.figure(figsize=figsize, constrained_layout=True)
+	outer = fig.add_gridspec(2, 3, height_ratios=[2,1])
+
+	# top: bar plots
+	bar_axes = [fig.add_subplot(outer[0, i]) for i in range(3)]
+	# bottom: histograms (each inner cell is 1x2)
+	hist_axes = []
+	for col in range(3):
+		sub = outer[1, col].subgridspec(1,2, wspace=0.4)
+		hist_axes.append((
+			fig.add_subplot(sub[0,0]),
+			fig.add_subplot(sub[0,1])
+		))
+
+	for i, (cryo, w99, cpom, awi, smos) in enumerate(datasets):
+		# flatten and mask NaNs
+		arrays = [arr.ravel() for arr in (cryo, w99, cpom, awi, smos)]
+		valid = ~np.isnan(arrays[0])
+		for arr in arrays[1:]:
+			valid &= ~np.isnan(arr)
+		cryo_f, w99_f, cpom_f, awi_f, smos_f = [arr[valid] for arr in arrays]
+
+		# BARPLOT means
+		means = {k:[] for k in ['UiT','W99','AWI','CPOM']}
+		for lo, hi in zip(bar_bins[:-1], bar_bins[1:]):
+			m = (smos_f>=lo) & (smos_f<hi)
+			means['UiT'].append(np.nanmean(cryo_f[m]) if m.any() else np.nan)
+			means['W99'].append(np.nanmean(w99_f[m])   if m.any() else np.nan)
+			means['AWI'].append(np.nanmean(awi_f[m])   if m.any() else np.nan)
+			means['CPOM'].append(np.nanmean(cpom_f[m]) if m.any() else np.nan)
+
+		bc = 0.5*(bar_bins[1:]+bar_bins[:-1])
+		ax_bar = bar_axes[i]
+		ax_bar.bar(bc-1.5*bar_width, means['UiT'], bar_width, color='salmon',    label='UiT')
+		ax_bar.bar(bc-0.5*bar_width, means['W99'], bar_width, color='skyblue',  label='W99')
+		ax_bar.bar(bc+0.5*bar_width, means['AWI'], bar_width, color='blueviolet',label='AWI')
+		ax_bar.bar(bc+1.5*bar_width, means['CPOM'],bar_width, color='teal',      label='CPOM')
+		ax_bar.set_title(months[i])
+		ax_bar.set_xlim(bar_bins[0], bar_bins[-1])
+		ax_bar.set_xlabel('SMOS SIT [m]')
+		if i==0:
+			ax_bar.set_ylabel('Mean SIT [m]')
+			ax_bar.legend(ncols=4, loc='upper center', bbox_to_anchor=(0.5,1.15))
+		ax_bar.grid(axis='y', linestyle='--', alpha=0.5)
+
+		# prepare mask for histograms
+		mask = (smos_f>=0)&(smos_f<=1)
+		smos_m, cryo_m, w99_m = smos_f[mask], cryo_f[mask], w99_f[mask]
+		awi_m, cpom_m         = awi_f[mask],  cpom_f[mask]
+
+		# left hist: SMOS, Cryo, W99
+		axL, axR = hist_axes[i]
+		axL.hist(smos_m, bins=hist_bins, color='#155084', label='SMOS')
+		axL.hist(cryo_m, bins=hist_bins, edgecolor='salmon', fill=True,
+				 alpha=0.5, hatch='xx', label='UiT')
+		axL.hist(w99_m,  bins=hist_bins, edgecolor='skyblue', fill=False,
+				 hatch='xx', label='W99')
+		if i==0:
+			axL.set_ylabel('Count')
+			axL.legend(loc='upper right')
+		axL.set_xlabel('SIT [m]')
+		axL.set_yscale('log')
+		axL.grid(linestyle='--', alpha=0.3)
+
+		# right hist: SMOS, AWI, CPOM
+		axR.hist(smos_m, bins=hist_bins, color='#155084', label='SMOS')
+		axR.hist(awi_m,  bins=hist_bins, edgecolor='blueviolet', fill=True,
+				 alpha=0.5, hatch='xx', label='AWI')
+		axR.hist(cpom_m, bins=hist_bins, edgecolor='teal', fill=False,
+				 hatch='xx', label='CPOM')
+		if i==0:
+			axR.legend(loc='upper right')
+		axR.set_xlabel('SIT [m]')
+		axR.set_yscale('log')
+		axR.grid(linestyle='--', alpha=0.3)
+
+	# Save PDF
+	plt.savefig('bar_with_histograms.pdf', bbox_inches='tight')
+	plt.show()
+
 
 def heatmap_sea_ice_difference(cryo_interp, w99_interp, cpom_interp, awi_interp, smos_si, month):
 	#single month
@@ -709,6 +862,19 @@ def heatmap_sea_ice_difference_3months(
 	cryo_list, w99_list, cpom_list, awi_list, smos_list,
 	month_names=["October", "November", "December"]
 ):
+	plt.rcParams.update({
+		'font.family':      'serif',
+		'font.size':         12,
+		'axes.titlesize':    14,
+		'axes.labelsize':    12,
+		'xtick.labelsize':   10,
+		'ytick.labelsize':   10,
+		'legend.fontsize':   10,
+		'figure.titlesize':  14,
+		'legend.frameon':   False,
+		'lines.linewidth':  1.2,
+		'lines.markersize': 5,
+	})
 	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
 	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
 	satellite_products = ["UiT", "W99", "CPOM", "AWI"]
@@ -760,6 +926,10 @@ def heatmap_sea_ice_difference_3months(
 
 	plt.tight_layout()
 	plt.show()
+
+def map_difference(cryo_oct, w99_oct, awi, cpom, smos_oct, x_cryo_oct, y_cryo_oct):
+    pass
+
 
 def average_difference_target_source(cryo_interp, cpom_interp, awi_interp, smos_si):
 	# Define bins and labels
@@ -901,6 +1071,7 @@ if __name__ == '__main__':
 	#multiple_box_plot_scatter(cryo_interp, cpom_interp, awi_interp, si_thickness_smos_dec)
 	#multiple_box_plot_scatter_3x3(
 	#cryo_data=[si_thickness_cryo_oct, si_thickness_cryo_nov, si_thickness_cryo_dec],
+	#w99_data=[w99_resampled_sit_oct, w99_resampled_sit_nov, w99_resampled_sit_dec],
 	#awi_data=[awi_resampled_sit_oct, awi_resampled_sit_nov, awi_resampled_sit_dec],
 	#cpom_data=[cpom_resampled_sit_oct, cpom_resampled_sit_nov, cpom_resampled_sit_dec],
 	#smos_data=[smos_resampled_sit_oct, smos_resampled_sit_nov, smos_resampled_sit_dec],
@@ -914,20 +1085,14 @@ if __name__ == '__main__':
 	#awi_resampled_sit_oct, awi_resampled_sit_nov, awi_resampled_sit_dec, 
 	#smos_resampled_sit_oct, smos_resampled_sit_nov, smos_resampled_sit_dec
 	#)
-	#histogram(si_thickness_cryo_oct, si_thickness_cryo_nov, si_thickness_cryo_dec,
+	#histogram_2(si_thickness_cryo_oct, w99_resampled_sit_oct, awi_resampled_sit_oct, cpom_resampled_sit_oct, smos_resampled_sit_oct)
+	#bar_with_histograms(
+	#si_thickness_cryo_oct, si_thickness_cryo_nov, si_thickness_cryo_dec,
 	#w99_resampled_sit_oct,  w99_resampled_sit_nov,  w99_resampled_sit_dec,
 	#cpom_resampled_sit_oct, cpom_resampled_sit_nov, cpom_resampled_sit_dec,
 	#awi_resampled_sit_oct,  awi_resampled_sit_nov,  awi_resampled_sit_dec,
 	#smos_resampled_sit_oct, smos_resampled_sit_nov, smos_resampled_sit_dec,
-	#bins=30)
-	#histogram_2(si_thickness_cryo_oct, w99_resampled_sit_oct, awi_resampled_sit_oct, cpom_resampled_sit_oct, smos_resampled_sit_oct)
-	bar_with_histograms(
-	si_thickness_cryo_oct, si_thickness_cryo_nov, si_thickness_cryo_dec,
-	w99_resampled_sit_oct,  w99_resampled_sit_nov,  w99_resampled_sit_dec,
-	cpom_resampled_sit_oct, cpom_resampled_sit_nov, cpom_resampled_sit_dec,
-	awi_resampled_sit_oct,  awi_resampled_sit_nov,  awi_resampled_sit_dec,
-	smos_resampled_sit_oct, smos_resampled_sit_nov, smos_resampled_sit_dec,
-	)
+	#)
  
 	#heatmap_sea_ice_difference(si_thickness_cryo_oct, w99_resampled_sit_oct, cpom_resampled_sit_oct, awi_resampled_sit_oct, smos_resampled_sit_oct, "October")
 	#heatmap_sea_ice_difference_3months(
@@ -938,7 +1103,7 @@ if __name__ == '__main__':
 	#[smos_resampled_sit_oct, smos_resampled_sit_nov, smos_resampled_sit_dec],
 	#)
  
-	#map_difference(cryo_interp_oct, si_thickness_smos_oct, lat_smos_dec, lon_smos_dec, "December")
+	map_difference(si_thickness_cryo_oct, smos_resampled_sit_oct, x_cryo_oct, y_cryo_oct, "oct")
 	#histogram(cryo_interp_oct, si_thickness_smos_oct)
  
 	#average_difference_target_source(si_thickness_cryo_oct, cpom_resampled_sit_oct, awi_resampled_sit_oct, smos_resampled_sit_oct)
