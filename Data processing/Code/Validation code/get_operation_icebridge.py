@@ -13,6 +13,44 @@ import matplotlib.path as mpath
 import warnings
 warnings.filterwarnings("ignore", message="facecolor will have no effect*")
 
+oib_paths_2017 = [
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170309_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170310_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170311_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170312_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170314_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170320_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170323_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170324_IDCSI2.txt",
+]
+	
+
+oib_paths_2015 = [
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2015\OIB_20150319_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2015\OIB_20150324_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2015\OIB_20150325_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2015\OIB_20150326_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2015\OIB_20150327_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2015\OIB_20150329_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2015\OIB_20150330_IDCSI2.txt",
+]
+
+oib_paths_2014 = [
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140312_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140313_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140314_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140315_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140317_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140318_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140319_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140321_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140324_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140325_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140326_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140328_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2014\OIB_20140331_IDCSI2.txt", 
+]
+
 oib_paths_2013 = [
 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130321.txt",
 	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2013\IDCSI4_20130322.txt",
