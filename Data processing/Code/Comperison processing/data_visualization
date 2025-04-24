@@ -20,6 +20,7 @@ from scipy.interpolate import griddata
 import seaborn as sns
 from matplotlib.ticker import PercentFormatter
 import matplotlib as mpl
+from scipy.stats import linregress
 
 
 
@@ -411,8 +412,14 @@ def multiple_box_plot_scatter_3x3(cryo_data, w99_data, awi_data, cpom_data, smos
 				binned_data.append(values)
 				medians.append(np.nanmedian(values) if len(values) > 0 else np.nan)
 
-			ax = axes[row, col]
+			# print out the median values for each bin
+			for i, median in enumerate(medians):
+				print(f"Row {row}, Month {col}, Bin {i}: Median = {median}")
 
+   
+			ax = axes[row, col]		
+   
+   
 			# Boxplot
 			bp = ax.boxplot(
 				binned_data,
@@ -927,105 +934,101 @@ def heatmap_sea_ice_difference_3months(
 	plt.tight_layout()
 	plt.show()
 
-def map_difference(cryo_oct, w99_oct, awi, cpom, smos_oct, x_cryo_oct, y_cryo_oct):
-    pass
+def map_difference_1( cryo_oct, w99_oct, awi_oct, cpom_oct, smos_oct, lat, lon, cmap='RdBu_r', vmin=-0.5, vmax=0.5, figsize=(12, 8)):
+    """
+    Plot a 2×2 grid of polar-stereographic difference maps (product – SMOS),
+    overlaying black dots at grid cells where regression slope is
+    significant at the 95% level for time-series inputs.
 
+    Parameters
+    ----------
+    cryo_oct, w99_oct, awi_oct, cpom_oct : ndarray
+        Either 3D arrays (ntime, nlat, nlon) or 2D arrays (nlat, nlon).
+    smos_oct : ndarray
+        Same dims as above (3D or 2D).
+    lat, lon : ndarray, shape (nlat, nlon)
+        Latitude and longitude grid.
+    """
+    products = {
+        'CryoSat − SMOS': cryo_oct,
+        'W99     − SMOS': w99_oct,
+        'AWI     − SMOS': awi_oct,
+        'CPOM    − SMOS': cpom_oct
+    }
 
-def average_difference_target_source(cryo_interp, cpom_interp, awi_interp, smos_si):
-	# Define bins and labels
-	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
-	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+    # Define North Polar Stereographic projection
+    proj = ccrs.NorthPolarStereo()
+
+    fig, axes = plt.subplots(
+        2, 2,
+        figsize=figsize,
+        subplot_kw={'projection': proj},
+        constrained_layout=True
+    )
+    axes = axes.ravel()
+
+    sig_masks = {}
+
+    for ax, (title, prod_ts) in zip(axes, products.items()):
+        # Compute difference and significance
+        if prod_ts.ndim == 3 and smos_oct.ndim == 3:
+            diff = prod_ts.mean(axis=0) - smos_oct.mean(axis=0)
+            ny, nx = diff.shape
+            pval = np.full((ny, nx), np.nan)
+            for i in range(ny):
+                for j in range(nx):
+                    x = smos_oct[:, i, j]
+                    y = prod_ts[:, i, j]
+                    mask = np.isfinite(x) & np.isfinite(y)
+                    if mask.sum() > 2:
+                        _, _, _, p, _ = linregress(x[mask], y[mask])
+                        pval[i, j] = p
+            sig_masks[title] = (pval < 0.05)
+        else:
+            diff = prod_ts - smos_oct
+            sig_masks[title] = np.zeros_like(diff, dtype=bool)
+
+        # Plot difference map
+        im = ax.pcolormesh( lon, lat, diff, transform=ccrs.PlateCarree(), cmap=cmap, vmin=vmin, vmax=vmax)
+        # Add coastlines and gridlines
+        ax.coastlines(resolution='110m', linewidth=0.5)
+        gl = ax.gridlines(
+            draw_labels=True,
+            xlocs=np.arange(-180, 181, 30),
+            ylocs=np.arange(60, 91, 10),
+            linestyle='--', color='gray', alpha=0.5
+        )
+        gl.top_labels = False
+        gl.left_labels = False
+        ax.set_title(title, fontsize=14)
+
+        # Overlay significance dots
+        mask_sig = sig_masks[title]
+        ax.scatter(
+            lon[mask_sig], lat[mask_sig],
+            s=5, c='k', transform=ccrs.PlateCarree(),
+            label='p < 0.05'
+        )
+
+        # Focus on high latitudes (>60°)
+        ax.set_extent([-180, 180, 60, 90], crs=ccrs.PlateCarree())
+
+    # Shared colorbar at bottom
+    cbar = fig.colorbar(
+        im, ax=axes.tolist(),
+        orientation='horizontal', fraction=0.05, pad=0.04
+    )
+    cbar.set_label('Mean SIT difference [m]', fontsize=12)
+    cbar.ax.tick_params(labelsize=10)
+
+    plt.show()
+
 	
-	# Flatten arrays
-	cryo_flat = cryo_interp.flatten()
-	cpom_flat = cpom_interp.flatten()
-	awi_flat = awi_interp.flatten()
-	smos_flat = smos_si.flatten()
-	
-	# Remove NaN values
-	valid_mask = ~np.isnan(cryo_flat) & ~np.isnan(cpom_flat) & ~np.isnan(awi_flat) & ~np.isnan(smos_flat)
-	cryo_flat = cryo_flat[valid_mask]
-	cpom_flat = cpom_flat[valid_mask]
-	awi_flat = awi_flat[valid_mask]
-	smos_flat = smos_flat[valid_mask]
-
-	# Initialize lists to store results
-	mean_differences_cryo = []
-	mean_differences_cpom = []
-	mean_differences_awi = []
-	
-	corr_cryo = []
-	corr_cpom = []
-	corr_awi = []
-
-	rmse_cryo = []
-	rmse_cpom = []
-	rmse_awi = []
- 
-	# Compute mean difference for each bin
-	for i in range(len(bins) - 1):
-		mask = (smos_flat >= bins[i]) & (smos_flat < bins[i + 1])
-		
-		if np.any(mask):  # Check if the bin contains any values
-			smos_bin = smos_flat[mask]
-			cryo_bin = cryo_flat[mask]
-			cpom_bin = cpom_flat[mask]
-			awi_bin = awi_flat[mask]
-
-			
-			smos_mean = np.mean(smos_flat[mask])  # Mean SMOS value in the bin
-			
-			# Compute mean differences
-			mean_differences_cryo.append(np.mean(cryo_flat[mask]) - smos_mean)
-			mean_differences_cpom.append(np.mean(cpom_flat[mask]) - smos_mean)
-			mean_differences_awi.append(np.mean(awi_flat[mask]) - smos_mean)
-			
-			corr_cryo.append(np.corrcoef(smos_bin, cryo_bin)[0, 1])
-			corr_cpom.append(np.corrcoef(smos_bin, cpom_bin)[0, 1])
-			corr_awi.append(np.corrcoef(smos_bin, awi_bin)[0, 1])
-   
-			rmse_cryo.append(np.sqrt(np.mean((cryo_flat[mask] - smos_bin) ** 2)))
-			rmse_cpom.append(np.sqrt(np.mean((cpom_flat[mask] - smos_bin) ** 2)))
-			rmse_awi.append(np.sqrt(np.mean((awi_flat[mask] - smos_bin) ** 2)))   
-		else:
-			# Append NaN if no values in bin to keep dimensions consistent
-			mean_differences_cryo.append(np.nan)
-			mean_differences_cpom.append(np.nan)
-			mean_differences_awi.append(np.nan)
-	
-	# print results
-	print("-----------------SMOS and UiT-----------------")
-	print(f"Mean difference: {np.round(mean_differences_cryo, 3)}")
-	print(f"Correlation coefficient: {np.round(corr_cryo, 3)}") 
-	print(f"RMSE: {np.round(rmse_cryo, 3)}")
-	print("Total mean difference: ", np.round(np.nanmean(mean_differences_cryo), 3))
-	print("Total RMSE:", np.round(np.nanmean(rmse_cryo), 3))
-	print("\n-----------------SMOS and CPOM-----------------")
-	print(f"Mean difference: {np.round(mean_differences_cpom, 3)}")
-	print(f"Correlation coefficient: {np.round(corr_cpom, 3)}")
-	print(f"RMSE: {np.round(rmse_cpom, 3)}")
-	print("Total mean difference: ", np.round(np.nanmean(mean_differences_cpom), 3))
-	print("Total RMSE:", np.round(np.nanmean(rmse_cpom), 3))
-	print("\n-----------------SMOS and AWI-----------------")
-	print(f"Mean difference: {np.round(mean_differences_awi, 3)}")
-	print(f"Correlation coefficient: {np.round(corr_awi, 3)}")
-	print(f"RMSE: {np.round(rmse_awi, 3)}")
-	print("Total mean difference: ", np.round(np.nanmean(mean_differences_awi), 3))
-	print("Total RMSE:", np.round(np.nanmean(rmse_awi), 3))
-
-
-
-def map_difference(cryo_interp, smos_interp, lat_smos, lon_smos, month_label=str):
+def map_difference(cryo_interp, smos_interp, lat_smos, lon_smos):
 	""" 
 	The function plots the main difference at every grid point between the CryoSat-2 and SMOS sea ice thickness data,
 	from 0 - 1 m, with the colorbar representing the difference in meters. In polar stereographic projection.
 	"""
-	# Check the shape of the inputs
-	print(f"Shape of CryoSat-2 data: {cryo_interp.shape}")
-	print(f"Shape of SMOS data: {smos_interp.shape}")
-	print(f"Shape of lat_smos: {lat_smos.shape}")
-	print(f"Shape of lon_smos: {lon_smos.shape}")
-
 	# If the difference is 3D, choose the appropriate time step (e.g., for November)
 	if len(cryo_interp.shape) == 3:  # Check if the data is 3D (time, lat, lon)
 		# Choose a specific time step (e.g., taking the first time step for CryoSat and SMOS)
@@ -1048,24 +1051,193 @@ def map_difference(cryo_interp, smos_interp, lat_smos, lon_smos, month_label=str
 	
 	# Set up the map features: coastlines, gridlines, etc.
 	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo()) # Set the region to the Arctic
-	ax.add_feature(cfeature.LAND, color='lightgray', alpha=1, zorder=2)
+	ax.coastlines()
+	ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1, zorder=2)
+	ax.add_feature(cfeature.OCEAN, facecolor="lightgray", alpha=0.5, zorder=1)
 	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
-	ax.add_feature(cfeature.COASTLINE, color = "gray", linewidth=0.5, zorder=4)
+	ax.add_feature(cfeature.RIVERS, edgecolor='lightgray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=4)
+	ax.add_feature(cfeature.COASTLINE, color = "black", linewidth=0.1, zorder=5)
 	
-	# Plot the difference data on the map
-	# Ensure lat_smos and lon_smos are 2D, and difference is 2D
-	im = ax.pcolormesh(lon_smos, lat_smos, difference, transform=ccrs.PlateCarree(), cmap='coolwarm', shading='auto')
+	im = ax.pcolormesh(lon_smos, lat_smos, difference, transform=ccrs.PlateCarree(), cmap='coolwarm', zorder=6)
 
-	# Add a colorbar to represent the difference in meters
 	cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.01, fraction=0.02)
 	cbar.set_label("Difference in SIT (m)", fontsize=12)
-
-	# Set the title
-	ax.set_title(f'Difference between CryoSat-2 and SMOS SIT, {month_label}', fontsize=14)
-
-	# Show the plot
 	plt.show()
 	
+def map_difference_2(cryo_interp, smos_interp, lat_smos, lon_smos):
+    """
+    Plots the difference between CryoSat-2 and SMOS sea-ice thickness
+    and overlays black scatter dots where the regression slope of
+    difference vs. time is significant at the 95% confidence level.
+    Inputs:
+        cryo_interp: numpy array (time, lat, lon) or (lat, lon)
+        smos_interp: numpy array (time, lat, lon) or (lat, lon)
+        lat_smos: 2D or 1D latitude array
+        lon_smos: 2D or 1D longitude array
+    """
+    # Print shapes
+    print(f"Shape of CryoSat-2 data: {cryo_interp.shape}")
+    print(f"Shape of SMOS data:    {smos_interp.shape}")
+    print(f"Shape of lat_smos:     {lat_smos.shape}")
+    print(f"Shape of lon_smos:     {lon_smos.shape}")
+
+    # If input is 3D (time series), compute regression slope of difference vs. time
+    if cryo_interp.ndim == 3 and smos_interp.ndim == 3:
+        nt, nlat, nlon = cryo_interp.shape
+        time = np.arange(nt)
+
+        # Arrays to hold slope and p-value
+        slope = np.full((nlat, nlon), np.nan)
+        pval  = np.full((nlat, nlon), np.nan)
+        
+        # Loop over grid points
+        for i in range(nlat):
+            for j in range(nlon):
+                diff_ts = cryo_interp[:, i, j] - smos_interp[:, i, j]
+                mask = ~np.isnan(diff_ts)
+                if np.sum(mask) > 1:
+                    res = linregress(time[mask], diff_ts[mask])
+                    slope[i, j] = res.slope
+                    pval[i, j]   = res.pvalue
+
+        # Mask of significant slopes at alpha = 0.05
+        sig_mask = (pval < 0.05)
+
+        # Use the first time slice for the difference map
+        cryo_plot = cryo_interp[0, :, :]
+        smos_plot = smos_interp[0, :, :]
+    else:
+        # No time dimension: no regression, so no scatter overlay
+        sig_mask = None
+        cryo_plot = cryo_interp
+        smos_plot = smos_interp
+
+    # Compute difference and mask unwanted values
+    difference = cryo_plot - smos_plot
+    difference[smos_plot > 1] = np.nan
+
+    # Plot difference on a polar stereographic map
+    fig, ax = plt.subplots(figsize=(10, 10), subplot_kw={'projection': ccrs.NorthPolarStereo()})
+    ax.set_extent([-3e6, 3e6, -3e6, 3e6], ccrs.NorthPolarStereo())
+    ax.coastlines()
+    ax.add_feature(cfeature.LAND, facecolor="gray",   alpha=1,   zorder=2)
+    ax.add_feature(cfeature.OCEAN, facecolor="lightgray", alpha=0.5, zorder=1)
+    ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
+    ax.add_feature(cfeature.RIVERS, edgecolor='lightgray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=4)
+    ax.add_feature(cfeature.COASTLINE, color="black", linewidth=0.1, zorder=5)
+
+    im = ax.pcolormesh(lon_smos, lat_smos, difference,
+                       transform=ccrs.PlateCarree(), cmap='coolwarm', zorder=6)
+    cbar = plt.colorbar(im, ax=ax, orientation='vertical', pad=0.01, fraction=0.02)
+    cbar.set_label("Difference in SIT (m)", fontsize=12)
+
+    # Overlay black scatter dots where slope is significant
+    if sig_mask is not None:
+        # Ensure lon/lat arrays are 2D meshgrids
+        lon_grid, lat_grid = np.meshgrid(lon_smos, lat_smos)
+        ax.scatter(lon_grid[sig_mask], lat_grid[sig_mask],
+                   s=10, color='k', transform=ccrs.PlateCarree(), zorder=7)
+
+    plt.show()
+
+def average_difference_target_source(cryo_interp, w99_interp, cpom_interp, awi_interp, smos_si):
+	# Define bins and labels
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+	
+	# Flatten arrays
+	cryo_flat = cryo_interp.flatten()
+	w99_flat = w99_interp.flatten()
+	cpom_flat = cpom_interp.flatten()
+	awi_flat = awi_interp.flatten()
+	smos_flat = smos_si.flatten()
+	
+	# Remove NaN values
+	valid_mask = ~np.isnan(cryo_flat) & ~np.isnan(cpom_flat) & ~np.isnan(awi_flat) & ~np.isnan(smos_flat) & ~np.isnan(w99_flat)
+	#
+	cryo_flat = cryo_flat[valid_mask]
+	w99_flat = w99_flat[valid_mask]
+	cpom_flat = cpom_flat[valid_mask]
+	awi_flat = awi_flat[valid_mask]
+	smos_flat = smos_flat[valid_mask]
+
+	# Initialize lists to store results
+	mean_differences_cryo = []
+	mean_differences_w99 = []
+	mean_differences_cpom = []
+	mean_differences_awi = []
+	
+	corr_cryo = []
+	corr_w99 = []
+	corr_cpom = []
+	corr_awi = []
+
+	rmse_cryo = []
+	rmse_w99 = []
+	rmse_cpom = []
+	rmse_awi = []
+ 
+	# Compute mean difference for each bin
+	for i in range(len(bins) - 1):
+		mask = (smos_flat >= bins[i]) & (smos_flat < bins[i + 1])
+		
+		if np.any(mask):  # Check if the bin contains any values
+			smos_bin = smos_flat[mask]
+			cryo_bin = cryo_flat[mask]
+			w99_bin = w99_flat[mask]
+			cpom_bin = cpom_flat[mask]
+			awi_bin = awi_flat[mask]
+
+			
+			smos_mean = np.mean(smos_flat[mask])  # Mean SMOS value in the bin
+			
+			# Compute mean differences
+			mean_differences_cryo.append(np.mean(cryo_flat[mask]) - smos_mean)
+			mean_differences_w99.append(np.mean(w99_flat[mask]) - smos_mean)
+			mean_differences_cpom.append(np.mean(cpom_flat[mask]) - smos_mean)
+			mean_differences_awi.append(np.mean(awi_flat[mask]) - smos_mean)
+			
+			corr_cryo.append(np.corrcoef(smos_bin, cryo_bin)[0, 1])
+			corr_w99.append(np.corrcoef(smos_bin, w99_bin)[0, 1])
+			corr_cpom.append(np.corrcoef(smos_bin, cpom_bin)[0, 1])
+			corr_awi.append(np.corrcoef(smos_bin, awi_bin)[0, 1])
+   
+			rmse_cryo.append(np.sqrt(np.mean((cryo_flat[mask] - smos_bin) ** 2)))
+			rmse_w99.append(np.sqrt(np.mean((w99_flat[mask] - smos_bin) ** 2)))
+			rmse_cpom.append(np.sqrt(np.mean((cpom_flat[mask] - smos_bin) ** 2)))
+			rmse_awi.append(np.sqrt(np.mean((awi_flat[mask] - smos_bin) ** 2)))   
+		else:
+			# Append NaN if no values in bin to keep dimensions consistent
+			mean_differences_cryo.append(np.nan)
+			mean_differences_w99.append(np.nan)
+			mean_differences_cpom.append(np.nan)
+			mean_differences_awi.append(np.nan)
+	
+	# print results
+	print("-----------------SMOS and UiT-----------------")
+	print(f"Mean difference: {np.round(mean_differences_cryo, 3)}")
+	print(f"Correlation coefficient: {np.round(corr_cryo, 3)}") 
+	print(f"RMSE: {np.round(rmse_cryo, 3)}")
+	print("Total mean difference: ", np.round(np.nanmean(mean_differences_cryo), 3))
+	print("Total RMSE:", np.round(np.nanmean(rmse_cryo), 3))
+	print("\n-----------------SMOS and W99-----------------")
+	print(f"Mean difference: {np.round(mean_differences_w99, 3)}")
+	print(f"Correlation coefficient: {np.round(corr_w99, 3)}")
+	print(f"RMSE: {np.round(rmse_w99, 3)}")
+	print("Total mean difference: ", np.round(np.nanmean(mean_differences_w99), 3))
+	print("Total RMSE:", np.round(np.nanmean(rmse_w99), 3))
+	print("\n-----------------SMOS and CPOM-----------------")
+	print(f"Mean difference: {np.round(mean_differences_cpom, 3)}")
+	print(f"Correlation coefficient: {np.round(corr_cpom, 3)}")
+	print(f"RMSE: {np.round(rmse_cpom, 3)}")
+	print("Total mean difference: ", np.round(np.nanmean(mean_differences_cpom), 3))
+	print("Total RMSE:", np.round(np.nanmean(rmse_cpom), 3))
+	print("\n-----------------SMOS and AWI-----------------")
+	print(f"Mean difference: {np.round(mean_differences_awi, 3)}")
+	print(f"Correlation coefficient: {np.round(corr_awi, 3)}")
+	print(f"RMSE: {np.round(rmse_awi, 3)}")
+	print("Total mean difference: ", np.round(np.nanmean(mean_differences_awi), 3))
+	print("Total RMSE:", np.round(np.nanmean(rmse_awi), 3))
  
 if __name__ == '__main__':
 	#multiple_box_plot_scatter(cryo_interp, cpom_interp, awi_interp, si_thickness_smos_dec)
@@ -1103,7 +1275,10 @@ if __name__ == '__main__':
 	#[smos_resampled_sit_oct, smos_resampled_sit_nov, smos_resampled_sit_dec],
 	#)
  
-	map_difference(si_thickness_cryo_oct, smos_resampled_sit_oct, x_cryo_oct, y_cryo_oct, "oct")
-	#histogram(cryo_interp_oct, si_thickness_smos_oct)
+	#map_difference_1(
+	#	si_thickness_cryo_oct, w99_resampled_sit_oct, awi_resampled_sit_oct, cpom_resampled_sit_oct, smos_resampled_sit_oct,
+	#	lat_cryo_oct, lon_cryo_oct)
+	#map_difference(si_thickness_cryo_dec, smos_resampled_sit_dec, lat_cryo_dec, lon_cryo_dec)
+	#map_difference_2(si_thickness_cryo_dec, smos_resampled_sit_dec, lat_cryo_dec, lon_cryo_dec)
  
-	#average_difference_target_source(si_thickness_cryo_oct, cpom_resampled_sit_oct, awi_resampled_sit_oct, smos_resampled_sit_oct)
+	average_difference_target_source(si_thickness_cryo_oct, w99_resampled_sit_oct ,cpom_resampled_sit_oct, awi_resampled_sit_oct, smos_resampled_sit_oct)

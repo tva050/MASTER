@@ -6,70 +6,90 @@ ___________________________________________________________
 			October
 
 -----------------SMOS and CryoSat-2-----------------
-Mean difference: [ 0.085  0.025 -0.064 -0.124 -0.185]
-Correlation coefficient: [0.087 0.1   0.126 0.071 0.144]
-RMSE: [0.202 0.247 0.309 0.365 0.383]
-Total mean difference:  -0.053
-Total RMSE: 0.301
+Mean difference: [ 0.158  0.113  0.112  0.036 -0.116]
+Correlation coefficient: [0.233 0.142 0.124 0.148 0.07 ]
+RMSE: [0.273 0.301 0.365 0.394 0.425]
+Total mean difference:  0.061
+Total RMSE: 0.352
+
+-----------------SMOS and W99-----------------
+Mean difference: [ 0.342  0.222  0.103  0.001 -0.164]
+Correlation coefficient: [0.158 0.06  0.072 0.155 0.041]
+RMSE: [0.429 0.296 0.269 0.27  0.312]
+Total mean difference:  0.101
+Total RMSE: 0.315
 
 -----------------SMOS and CPOM-----------------
-Mean difference: [0.579 0.485 0.353 0.299 0.179]
-Correlation coefficient: [0.039 0.118 0.047 0.057 0.089]
-RMSE: [0.878 0.765 0.61  0.486 0.448]
-Total mean difference:  0.379
-Total RMSE: 0.638
+Mean difference: [0.726 0.555 0.434 0.364 0.16 ]
+Correlation coefficient: [0.021 0.018 0.112 0.027 0.026]
+RMSE: [0.922 0.775 0.644 0.586 0.453]
+Total mean difference:  0.448
+Total RMSE: 0.676
 
 -----------------SMOS and AWI-----------------
-Mean difference: [0.358 0.339 0.199 0.08  0.044]
-Correlation coefficient: [0.067 0.123 0.098 0.019 0.151]
-RMSE: [0.464 0.429 0.359 0.329 0.37 ]
-Total mean difference:  0.204
-Total RMSE: 0.39
+Mean difference: [ 0.465  0.358  0.268  0.139 -0.02 ]
+Correlation coefficient: [0.189 0.059 0.1   0.164 0.019]
+RMSE: [0.532 0.442 0.405 0.355 0.364]
+Total mean difference:  0.242
+Total RMSE: 0.42
 
 ___________________________________________________________
 			November
 
 -----------------SMOS and CryoSat-2-----------------
-Mean difference: [ 0.125  0.021 -0.108 -0.217 -0.234]
-Correlation coefficient: [0.228 0.022 0.061 0.07  0.147]
-RMSE: [0.298 0.342 0.343 0.429 0.485]
-Total mean difference:  -0.082
-Total RMSE: 0.379
+Mean difference: [0.281 0.203 0.183 0.123 0.028]
+Correlation coefficient: [0.25  0.184 0.078 0.153 0.056]
+RMSE: [0.397 0.395 0.446 0.446 0.489]
+Total mean difference:  0.164
+Total RMSE: 0.435
+
+-----------------SMOS and W99-----------------
+Mean difference: [0.446 0.295 0.3   0.219 0.066]
+Correlation coefficient: [-0.08   0.179  0.144  0.103  0.032]
+RMSE: [0.537 0.414 0.411 0.371 0.349]
+Total mean difference:  0.265
+Total RMSE: 0.416
 
 -----------------SMOS and CPOM-----------------
-Mean difference: [0.748 0.595 0.407 0.237 0.162]
-Correlation coefficient: [-0.084  0.004  0.044  0.045  0.096]
-RMSE: [0.987 0.811 0.598 0.476 0.406]
-Total mean difference:  0.43
-Total RMSE: 0.656
+Mean difference: [0.918 0.682 0.601 0.534 0.377]
+Correlation coefficient: [-0.039  0.127  0.041  0.076 -0.032]
+RMSE: [1.097 0.801 0.722 0.647 0.533]
+Total mean difference:  0.622
+Total RMSE: 0.76
 
 -----------------SMOS and AWI-----------------
-Mean difference: [ 0.358  0.24   0.103 -0.068 -0.152]
-Correlation coefficient: [0.037 0.049 0.054 0.013 0.114]
-RMSE: [0.571 0.387 0.297 0.3   0.374]
-Total mean difference:  0.096
-Total RMSE: 0.386
-
+ean difference: [0.434 0.382 0.338 0.262 0.113]
+Correlation coefficient: [0.157 0.18  0.09  0.105 0.039]
+RMSE: [0.526 0.526 0.485 0.492 0.47 ]
+Total mean difference:  0.306
+Total RMSE: 0.5
 ___________________________________________________________
 			December
 
 -----------------SMOS and CryoSat-2-----------------
-Mean difference: [ 0.326  0.249  0.111  0.004 -0.18 ]
-Correlation coefficient: [ 0.004  0.056 -0.001  0.085 -0.043]
-RMSE: [0.647 0.589 0.539 0.619 0.575]
-Total mean difference:  0.102
-Total RMSE: 0.594
+Mean difference: [ 0.257  0.187  0.12   0.005 -0.246]
+Correlation coefficient: [ 0.177  0.043  0.035 -0.002  0.024]
+RMSE: [0.376 0.485 0.526 0.791 0.525]
+Total mean difference:  0.064
+Total RMSE: 0.541
+
+-----------------SMOS and W99-----------------
+Mean difference: [ 0.49   0.437  0.228  0.039 -0.21 ]
+Correlation coefficient: [ 0.022  0.094 -0.029 -0.055  0.067]
+RMSE: [0.666 0.655 0.46  0.767 0.415]
+Total mean difference:  0.197
+Total RMSE: 0.592
 
 -----------------SMOS and CPOM-----------------
-Mean difference: [1.021 0.873 0.672 0.434 0.245]
-Correlation coefficient: [-0.095 -0.045  0.018  0.037 -0.024]
-RMSE: [1.257 1.164 0.846 0.627 0.48 ]
-Total mean difference:  0.649
-Total RMSE: 0.875
+Mean difference: [0.988 0.851 0.678 0.476 0.223]
+Correlation coefficient: [ 0.056  0.037 -0.065  0.07   0.062]
+RMSE: [1.223 1.023 0.84  0.682 0.482]
+Total mean difference:  0.643
+Total RMSE: 0.85
 
 -----------------SMOS and AWI-----------------
-Mean difference: [ 0.41   0.236  0.138  0.028 -0.177]
-Correlation coefficient: [-0.018  0.013  0.12   0.078 -0.031]
-RMSE: [0.564 0.41  0.381 0.351 0.393]
-Total mean difference:  0.127
-Total RMSE: 0.42
+Mean difference: [ 0.445  0.312  0.2    0.056 -0.152]
+Correlation coefficient: [ 0.063  0.069  0.01   0.01  -0.005]
+RMSE: [0.859 0.617 0.399 0.382 0.415]
+Total mean difference:  0.172
+Total RMSE: 0.535

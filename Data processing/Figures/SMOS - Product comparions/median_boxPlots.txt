@@ -1,0 +1,77 @@
+Row 0, Month 0, Bin 0: Median = 0.16587704103217338
+Row 0, Month 0, Bin 1: Median = 0.3454370658324933
+Row 0, Month 0, Bin 2: Median = 0.5424573683791987
+Row 0, Month 0, Bin 3: Median = 0.7415716118618355
+Row 0, Month 0, Bin 4: Median = 0.8274530589685489
+Row 0, Month 1, Bin 0: Median = 0.2599452852273756
+Row 0, Month 1, Bin 1: Median = 0.40538941612669677
+Row 0, Month 1, Bin 2: Median = 0.5699542815047479
+Row 0, Month 1, Bin 3: Median = 0.7494142561019121
+Row 0, Month 1, Bin 4: Median = 0.8807532404413831
+Row 0, Month 2, Bin 0: Median = 0.2735906041364661
+Row 0, Month 2, Bin 1: Median = 0.39164105849396824
+Row 0, Month 2, Bin 2: Median = 0.48810584679179503
+Row 0, Month 2, Bin 3: Median = 0.5573135274119985
+Row 0, Month 2, Bin 4: Median = 0.5494545805038062
+C:\Users\trym7\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\LocalCache\local-packages\Python310\site-packages\numpy\core\fromnumeric.py:771: UserWarning: Warning: 'partition' will ignore the 'mask' of the MaskedArray.   
+  a.partition(kth, axis=axis, kind=kind, order=order)
+Row 1, Month 0, Bin 0: Median = 0.32576268708733136
+Row 1, Month 0, Bin 1: Median = 0.5139653644909404
+Row 1, Month 0, Bin 2: Median = 0.6024651748529123
+Row 1, Month 0, Bin 3: Median = 0.7397411540221763
+Row 1, Month 0, Bin 4: Median = 0.7835491555958669
+C:\Users\trym7\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\LocalCache\local-packages\Python310\site-packages\numpy\core\fromnumeric.py:771: UserWarning: Warning: 'partition' will ignore the 'mask' of the MaskedArray.   
+  a.partition(kth, axis=axis, kind=kind, order=order)
+Row 1, Month 1, Bin 0: Median = 0.4822834543731742
+Row 1, Month 1, Bin 1: Median = 0.6006614185712363
+Row 1, Month 1, Bin 2: Median = 0.755839812648603
+Row 1, Month 1, Bin 3: Median = 0.8663018350165429
+Row 1, Month 1, Bin 4: Median = 0.9063085621310093
+C:\Users\trym7\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\LocalCache\local-packages\Python310\site-packages\numpy\core\fromnumeric.py:771: UserWarning: Warning: 'partition' will ignore the 'mask' of the MaskedArray.   
+  a.partition(kth, axis=axis, kind=kind, order=order)
+Row 1, Month 2, Bin 0: Median = 0.7720903827397907
+Row 1, Month 2, Bin 1: Median = 0.7307416697559024
+Row 1, Month 2, Bin 2: Median = 0.6965647276555713
+Row 1, Month 2, Bin 3: Median = 0.739430000506447
+Row 1, Month 2, Bin 4: Median = 0.7348211049109272
+C:\Users\trym7\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\LocalCache\local-packages\Python310\site-packages\numpy\core\fromnumeric.py:771: UserWarning: Warning: 'partition' will ignore the 'mask' of the MaskedArray.   
+  a.partition(kth, axis=axis, kind=kind, order=order)
+Row 2, Month 0, Bin 0: Median = 0.48210382461547846
+Row 2, Month 0, Bin 1: Median = 0.6123182773590088
+Row 2, Month 0, Bin 2: Median = 0.7075178027153015
+Row 2, Month 0, Bin 3: Median = 0.7922196984291077
+Row 2, Month 0, Bin 4: Median = 0.8009704947471619
+C:\Users\trym7\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\LocalCache\local-packages\Python310\site-packages\numpy\core\fromnumeric.py:771: UserWarning: Warning: 'partition' will ignore the 'mask' of the MaskedArray.   
+  a.partition(kth, axis=axis, kind=kind, order=order)
+Row 2, Month 1, Bin 0: Median = 0.45275603234767914
+Row 2, Month 1, Bin 1: Median = 0.6290077567100525
+Row 2, Month 1, Bin 2: Median = 0.7519095540046692
+Row 2, Month 1, Bin 4: Median = 0.8909653425216676
+C:\Users\trym7\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\LocalCache\local-packages\Python310\site-packages\numpy\core\fromnumeric.py:771: UserWarning: Warning: 'partition' will ignore the 'mask' of the MaskedArray.
+  a.partition(kth, axis=axis, kind=kind, order=order)
+Row 2, Month 2, Bin 0: Median = 0.39004868268966675
+Row 2, Month 2, Bin 1: Median = 0.5580163598060608
+Row 2, Month 2, Bin 2: Median = 0.6474732160568237
+Row 2, Month 2, Bin 3: Median = 0.6885896027088165
+Row 2, Month 2, Bin 4: Median = 0.7057398557662964
+C:\Users\trym7\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\LocalCache\local-packages\Python310\site-packages\numpy\core\fromnumeric.py:771: UserWarning: Warning: 'partition' will ignore the 'mask' of the MaskedArray.
+  a.partition(kth, axis=axis, kind=kind, order=order)
+Row 3, Month 0, Bin 0: Median = 0.8225291015683557
+Row 3, Month 0, Bin 1: Median = 0.9649614480851364
+Row 3, Month 0, Bin 2: Median = 1.0761799181611267
+Row 3, Month 0, Bin 3: Median = 1.1182993369239655
+Row 3, Month 0, Bin 4: Median = 1.1733984764890766
+C:\Users\trym7\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\LocalCache\local-packages\Python310\site-packages\numpy\core\fromnumeric.py:771: UserWarning: Warning: 'partition' will ignore the 'mask' of the MaskedArray.
+  a.partition(kth, axis=axis, kind=kind, order=order)
+Row 3, Month 1, Bin 0: Median = 0.9801842776968857
+Row 3, Month 1, Bin 1: Median = 0.9682519093472746
+Row 3, Month 1, Bin 2: Median = 1.0822425906811102
+Row 3, Month 1, Bin 3: Median = 1.250039669127803
+Row 3, Month 1, Bin 4: Median = 1.2769911355197627
+C:\Users\trym7\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0\LocalCache\local-packages\Python310\site-packages\numpy\core\fromnumeric.py:771: UserWarning: Warning: 'partition' will ignore the 'mask' of the MaskedArray.
+  a.partition(kth, axis=axis, kind=kind, order=order)
+Row 3, Month 2, Bin 0: Median = 1.0447461305880923
+Row 3, Month 2, Bin 1: Median = 1.1580379893427941
+Row 3, Month 2, Bin 2: Median = 1.1795809685114587
+Row 3, Month 2, Bin 3: Median = 1.1671248689398344
+Row 3, Month 2, Bin 4: Median = 1.132259324505551
