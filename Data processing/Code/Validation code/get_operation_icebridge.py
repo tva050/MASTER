@@ -14,14 +14,14 @@ import warnings
 warnings.filterwarnings("ignore", message="facecolor will have no effect*")
 
 oib_paths_2017 = [
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170309_IDCSI2.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170310_IDCSI2.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170311_IDCSI2.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170312_IDCSI2.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170314_IDCSI2.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170320_IDCSI2.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170323_IDCSI2.txt",
-	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\OIB_20170324_IDCSI2.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\IDCSI4_20170309.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\IDCSI4_20170310.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\IDCSI4_20170311.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\IDCSI4_20170312.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\IDCSI4_20170314.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\IDCSI4_20170320.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\IDCSI4_20170323.txt",
+	r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\Operation IceBridge\2017\IDCSI4_20170324.txt",
 ]
 	
 
@@ -255,7 +255,7 @@ def hist_cryo_smos_oib(cryo_sit, oib_sit, smos_sit):
 	plt.show()
 
 
-def plot_fligth_paths(cryo_x, cryo_y, oib_2011, oib_2012, oib_2013):
+def plot_fligth_paths(oib_2011, oib_2012, oib_2013):
 	oib_2011_lat, oib_2011_lon, oib_2011_sit, oib_2011_sit_un = extract_all_oib(oib_2011)
 	oib_2012_lat, oib_2012_lon, oib_2012_sit, oib_2012_sit_un = extract_all_oib(oib_2012)
 	oib_2013_lat, oib_2013_lon, oib_2013_sit, oib_2013_sit_un = extract_all_oib(oib_2013)
@@ -568,7 +568,7 @@ def differences(cryo_sit, smos_sit, oib_sit):
  
 
 if __name__ == "__main__":
-	plot_fligth_paths(x_cryo, y_cryo, oib_paths_2011, oib_paths_2012, oib_paths_2013)	
+	plot_fligth_paths(oib_paths_2014, oib_paths_2015, oib_paths_2017)	
  
  	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, cryo_sit, 'CryoSat-2 vs OiB')
 	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, resampled_smos_sit, 'SMOS vs OiB') 
