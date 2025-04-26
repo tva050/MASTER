@@ -220,25 +220,25 @@ def reprojecting(lon, lat, proj=ccrs.NorthPolarStereo()):
 # reprojecting all data to the same projection
 
 def reproject_all_data(data):
-    out = {}
-    for key in ('oib','smos','uit'):
-        # each of these is currently a list of arrays [yr1, yr2, …]
-        lats_list   = data[key]['lat']
-        lons_list   = data[key]['lon']
-        sit_list    = data[key]['sit']
-        sit_un_list = data[key]['sit_un']
-        
-        # concatenate into one big 1-D array per variable
-        all_lats   = np.concatenate(lats_list)
-        all_lons   = np.concatenate(lons_list)
-        all_sit    = np.concatenate(sit_list)
-        all_sit_un = np.concatenate(sit_un_list)
-        
-        # now these are true numpy arrays → OK to reproject
-        x, y = reprojecting(all_lons, all_lats)
-        
-        out[key] = (x, y, all_sit, all_sit_un)
-    return out
+	out = {}
+	for key in ('oib','smos','uit'):
+		# each of these is currently a list of arrays [yr1, yr2, …]
+		lats_list   = data[key]['lat']
+		lons_list   = data[key]['lon']
+		sit_list    = data[key]['sit']
+		sit_un_list = data[key]['sit_un']
+		
+		# concatenate into one big 1-D array per variable
+		all_lats   = np.concatenate(lats_list)
+		all_lons   = np.concatenate(lons_list)
+		all_sit    = np.concatenate(sit_list)
+		all_sit_un = np.concatenate(sit_un_list)
+		
+		# now these are true numpy arrays → OK to reproject
+		x, y = reprojecting(all_lons, all_lats)
+		
+		out[key] = (x, y, all_sit, all_sit_un)
+	return out
 
 def resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radius=12500):
 	""" 
@@ -305,66 +305,104 @@ def resample_all_data(data, radius=12500):
 		'uit': (uit_x, uit_y, uit_sit),
 	}
  
+plt.rcParams.update({
+		'font.family':      'serif',
+		'font.size':         10,
+		'axes.labelsize':    10,
+		'xtick.labelsize':   8,
+		'ytick.labelsize':   8,
+		'legend.fontsize':   10,
+		'figure.titlesize':  10,
+}) 
+ 
 def plot_flight_paths_all(data):
-    """
-    Plot all OIB flight paths on a NorthPolarStereo map,
-    first as a combined background, then year-by-year.
-    """
-    # Unpack
-    oib_lats = data['oib']['lat']
-    oib_lons = data['oib']['lon']
-    # Make sure your years list matches the order in get_all_data()
-    years = ['2011','2012','2013','2014','2015','2017']
-    assert len(years) == len(oib_lats), "Years list must match data length"
-
-    # Combine everything for a grey “backdrop”
-    all_lats = np.concatenate(oib_lats)
-    all_lons = np.concatenate(oib_lons)
-
-    fig = plt.figure(figsize=(10,10))
-    ax  = fig.add_subplot(1,1,1, projection=ccrs.NorthPolarStereo())
-    ax.set_extent([-3e6, 3e6, -3e6, 3e6], ccrs.NorthPolarStereo())
-
-    # map features
-    ax.coastlines()
-    ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1,   zorder=2)
-    ax.add_feature(cfeature.OCEAN,facecolor="lightgray",alpha=0.5,zorder=1)
-    ax.add_feature(cfeature.LAKES,edgecolor='gray',facecolor="white",
-                   linewidth=0.5,alpha=0.5,zorder=3)
-    ax.add_feature(cfeature.RIVERS,edgecolor='lightgray',facecolor="white",
-                   linewidth=0.5,alpha=0.5,zorder=4)
-    ax.add_feature(cfeature.COASTLINE,color="black",linewidth=0.1,zorder=5)
-    ax.gridlines(draw_labels=True, color="dimgray", zorder=7)
-
-    # 1) All flight paths combined, light grey
-    ax.scatter(all_lons, all_lats,
-               s=0.5, color='lightgray',
-               label='All OIB', transform=ccrs.PlateCarree(), zorder=6)
-
-    # 2) Year-by-year on top
-    # choose a colormap with enough distinct entries
-    cmap = plt.get_cmap('plasma', len(years))
-    for idx, (yr, lats, lons) in enumerate(zip(years, oib_lats, oib_lons)):
-        ax.scatter(lons, lats,
-                   s=1,
-                   linewidth=0,
-                   color=cmap(idx),
-                   label=f'OIB {yr}',
-                   transform=ccrs.PlateCarree(),
-                   zorder=7)
-
-    # circular boundary like your original
-    theta = np.linspace(0, 2*np.pi, 100)
-    verts = np.vstack([np.sin(theta), np.cos(theta)]).T
-    circle = mpath.Path(verts * 0.5 + 0.5)  # radius=0.5, center=(0.5,0.5)
-    ax.set_boundary(circle, transform=ax.transAxes)
-
-    plt.legend(markerscale=5, fontsize='small', loc='lower left')
-    plt.show()
+	"""
+	Plot all OIB flight paths on a NorthPolarStereo map,
+	first as a combined background, then year-by-year.
+	"""
 	
+	# Unpack
+	oib_lats = data['oib']['lat']
+	oib_lons = data['oib']['lon']
+	# Make sure your years list matches the order in get_all_data()
+	years = ['2011','2012','2013','2014','2015','2017']
+	assert len(years) == len(oib_lats), "Years list must match data length"
+
+	# Combine everything for a grey “backdrop”
+	all_lats = np.concatenate(oib_lats)
+	all_lons = np.concatenate(oib_lons)
+
+	fig = plt.figure(figsize=(10,10))
+	ax  = fig.add_subplot(1,1,1, projection=ccrs.NorthPolarStereo())
+	ax.set_extent([-3e6, 3e6, -3e6, 3e6], ccrs.NorthPolarStereo())
+
+	# map features
+	ax.coastlines()
+	ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1,   zorder=2)
+	ax.add_feature(cfeature.OCEAN,facecolor="lightgray",alpha=0.5,zorder=1)
+	ax.add_feature(cfeature.LAKES,edgecolor='gray',facecolor="white",
+				   linewidth=0.5,alpha=0.5,zorder=3)
+	ax.add_feature(cfeature.RIVERS,edgecolor='lightgray',facecolor="white",
+				   linewidth=0.5,alpha=0.5,zorder=4)
+	ax.add_feature(cfeature.COASTLINE,color="black",linewidth=0.1,zorder=5)
+	ax.gridlines(draw_labels=True, color="dimgray", zorder=7)
+
+	# 1) All flight paths combined, light grey
+	#ax.scatter(all_lons, all_lats, s=0.5, color='lightgray', label='All OIB', transform=ccrs.PlateCarree(), zorder=6)
+
+	# 2) Year-by-year on top
+	# choose a colormap with enough distinct entries
+	cmap = plt.get_cmap('plasma', len(years))
+	for idx, (yr, lats, lons) in enumerate(zip(years, oib_lats, oib_lons)):
+		ax.scatter(lons, lats, s=1, linewidth=0, color=cmap(idx), label=f'OIB {yr}', transform=ccrs.PlateCarree(), zorder=7)
+
+	# circular boundary like your original
+	theta = np.linspace(0, 2*np.pi, 100)
+	verts = np.vstack([np.sin(theta), np.cos(theta)]).T
+	circle = mpath.Path(verts * 0.5 + 0.5)  # radius=0.5, center=(0.5,0.5)
+	ax.set_boundary(circle, transform=ax.transAxes)
+
+	plt.legend(markerscale=5, fontsize='small', loc='lower left')
+	plt.show()
+
+
+def histogram_oib(data):
+	""" 
+	Plot an histogram of the OIB sit data,
+	showing the distribution of the data.
+	"""
+	# Unpack
+	oib_sit = data['oib']['sit']
+
+	# Flatten the list of arrays into a single array
+	all_sit = np.concatenate(oib_sit)
+ 
+	# make an trancparent red box, to display the area of interes between 0 and 1m
+	
+
+	# Create histogram
+	plt.figure(figsize=(10, 6))
+	plt.hist(all_sit, bins=50, alpha=0.7, label='OIB SIT', color='#155084')
+	plt.axvspan(0, 1, color='red', alpha=0.3, label='Area of interest (0-1 m)')
+	plt.axvline(x=1, color='red', linestyle='--', alpha=0.5)
+	# add thicks inside the histogram
+	plt.tick_params(axis='both', direction='in')
+	plt.xlim(0, 15)
+	plt.xlabel('Sea Ice Thickness (m)')
+	plt.ylabel('Frequency')
+	plt.title('Histogram of OIB Sea Ice Thickness')
+	plt.legend()
+	plt.grid()
+	plt.show()
  
 # call on the plotting function to plot all flight paths
 data = get_all_data()
 reprojected_data = reproject_all_data(data)
 
-plot_flight_paths_all(data)
+
+
+
+
+if __name__ == "__main__":
+	plot_flight_paths_all(data)
+	histogram_oib(data)

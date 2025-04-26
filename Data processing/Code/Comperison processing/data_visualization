@@ -440,7 +440,7 @@ def multiple_box_plot_scatter_3x3(cryo_data, w99_data, awi_data, cpom_data, smos
 				ax.scatter(x, values, alpha=0.4, color=colors[row], s=10)
 
 			# Formatting
-			ax.set_ylim(-2.5, 2.5)
+			ax.set_ylim(-1 , 2.5)
 
 			if row == 0:
 				ax.set_title(month_names[col])
