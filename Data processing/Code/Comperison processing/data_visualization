@@ -422,13 +422,7 @@ def multiple_box_plot_scatter_3x3(cryo_data, w99_data, awi_data, cpom_data, smos
    
    
 			# Boxplot
-			bp = ax.boxplot(
-				binned_data,
-				labels=bin_labels,
-				medianprops=dict(color='black'),
-				patch_artist=True,
-				showfliers=False
-			)
+			bp = ax.boxplot(binned_data, labels=bin_labels, medianprops=dict(color='black'), patch_artist=True, showfliers=False)
 
 			for patch in bp['boxes']:
 				patch.set_facecolor('lightgray')
@@ -663,7 +657,7 @@ def bar_with_histograms(
 		ax.grid(axis='y', linestyle='--', alpha=0.5)
 
 		# ---- 2) Prepare mask for histograms (SMOS between 0–1 m) ----
-		m0   = (smos_f>=0)&(smos_f<=1)
+		m0 = (smos_f>=0)&(smos_f<=1)
 		smos_m, cryo_m, w99_m = smos_f[m0], cryo_f[m0], w99_f[m0]
 		awi_m, cpom_m  = awi_f[m0],  cpom_f[m0]
 

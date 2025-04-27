@@ -11,13 +11,23 @@ def plot_2x2():
 	fig = plt.figure(figsize=(10, 10))
 	box_size = 0.4
 	gap = (1-2*box_size)/4
-	ax31 = fig.add_axes([gap, gap, box_size, box_size])
-	ax32 = fig.add_axes([box_size+3*gap, gap, box_size, box_size])
-	ax21 = fig.add_axes([gap, box_size+3*gap, box_size, box_size])
-	ax22 = fig.add_axes([box_size+3*gap, box_size+3*gap, box_size, box_size])
+	ax31 = fig.add_axes([gap, gap, box_size, box_size]) # bottom left
+	ax32 = fig.add_axes([box_size+3*gap, gap, box_size, box_size]) # bottom right
+	ax21 = fig.add_axes([gap, box_size+3*gap, box_size, box_size]) # top left
+	ax22 = fig.add_axes([box_size+3*gap, box_size+3*gap, box_size, box_size]) # top right
 	
 	plt.show()
  
+def plot_2():
+    fig = plt.figure(figsize=(10, 5))  # 10x10 figure size
+    box_width = 0.4  # Width of each subplot
+    gap = (1 - 2 * box_width) / 3  # Gap between plots and edges
+
+    ax1 = fig.add_axes([gap, 0.2, box_width, 0.6])
+    ax2 = fig.add_axes([2 * gap + box_width, 0.2, box_width, 0.6])
+
+    
+    plt.show()
  
 def plot_1x2():
 	fig = plt.figure(figsize=(10, 10))
@@ -42,5 +52,8 @@ def plot_1x2():
 
 	plt.show()
 
-plot_1x2()
+
+#plot_2x2()
+plot_2()
+#plot_1x2()
 

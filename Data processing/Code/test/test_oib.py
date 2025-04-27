@@ -383,7 +383,7 @@ def histogram_oib(data):
 
 	# Create histogram
 	plt.figure(figsize=(10, 6))
-	plt.hist(all_sit, bins=50, label='OIB SIT', color='#155084', weights=np.ones_like(all_sit) / len(all_sit))
+	plt.hist(all_sit, bins=50, label='OIB SIT', color='black', alpha=0.7, weights=np.ones_like(all_sit) / len(all_sit))
 	plt.axvspan(0, 1, color='red', alpha=0.3, label='Area of interest (0-1 m)')
 	#plt.axvline(x=1, color='red', linestyle='--', alpha=0.5)
 	# add thicks inside the histogram
@@ -398,79 +398,139 @@ def histogram_oib(data):
 	plt.show()
  
 def bar__hist_plot(data):
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+	
+	# unpacking the resampled data
+	oib_sit = data['oib']
+	smos_sit = data['smos']
+	cryo_sit = data['uit'][2]  # Assuming the third element is the SIT data
+	
+	# Flatten the list of arrays into a single array
+	oib = np.concatenate(oib_sit)
+	smos = np.concatenate(smos_sit)
+	cryo = np.concatenate(cryo_sit)
+	
+	nan_mask = ~np.isnan(oib) & ~np.isnan(smos) & ~np.isnan(cryo)
+	oib, smos, cryo = [arr[nan_mask] for arr in (oib, smos, cryo)]
+		
+	smos_means = []
+	cryo_means = []
+	for i in range(len(bins)-1): #
+		bin_mask = (oib >= bins[i]) & (oib < bins[i+1])
+		smos_means.append(np.mean(smos[bin_mask])) 
+		cryo_means.append(np.mean(cryo[bin_mask]))
+
+	# Set up the figure with one main plot and two smaller plots
+	fig = plt.figure(figsize=(10, 10))
+
+	# Layout parameters
+	box_size = 0.35
+	main_height = 0.5
+	gap = (1 - 2 * box_size) / 3
+	gap_main = (1 - main_height - box_size) / 3
+
+	# Create axes
+	ax_main = fig.add_axes([gap, 2 * gap_main + box_size, 1 - 2 * gap, main_height])
+	ax_left = fig.add_axes([gap, gap_main, box_size, box_size])
+	ax_right = fig.add_axes([2 * gap + box_size, gap_main, box_size, box_size])
+
+	# --- Main plot: Bar plot ---
+	x = np.arange(len(bin_labels))
+	width = 0.35  # width of the bars
+
+	ax_main.bar(x - width/2, smos_means, width, label='SMOS', color='blue', alpha=0.7)
+	ax_main.bar(x + width/2, cryo_means, width, label='UiT', color='green', alpha=0.7)
+	ax_main.set_ylabel('Mean SIT [m]')
+	ax_main.set_xlabel('OIB SIT bins [m]')
+	ax_main.tick_params(axis='both', direction='in')
+	ax_main.set_xticks(x)
+	ax_main.set_xticklabels(bin_labels)
+	ax_main.legend(frameon=False)
+	ax_main.grid(axis='y', linestyle='--', alpha=0.5)
+ 
+	# histogram mask
+	range_mask = (oib >= 0) & (oib <= 1)
+	oib_m, smos_m, cryo_m = oib[range_mask], smos[range_mask], cryo[range_mask]
+	bin_edges=np.linspace(0,1,11)
+ 
+	# --- Bottom left plot: Histogram OIB vs Cryo ---
+	ax_left.hist(oib_m, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
+	ax_left.hist(cryo_m, bins=bin_edges, edgecolor='green', color="green", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='UiT', density=True)
+	ax_left.tick_params(axis='both', direction='in')
+	ax_left.set_xlabel('SIT [m]')
+	ax_left.set_ylabel('Counts')
+	ax_left.yaxis.set_major_formatter(PercentFormatter(1))
+	ax_left.grid(alpha=0.5, linestyle='--')
+	ax_left.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False) 
+	
+
+	# --- Bottom right plot: Histogram OIB vs SMOS ---
+	ax_right.hist(oib_m, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
+	ax_right.hist(smos_m, bins=bin_edges, edgecolor='blue', color="blue", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='SMOS', density=True)
+	ax_right.set_xlabel('SIT [m]')
+	ax_right.tick_params(axis='both', direction='in')
+	ax_right.yaxis.set_major_formatter(PercentFormatter(1))
+	ax_right.grid(alpha=0.5, linestyle='--')
+	ax_right.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False)
+
+	plt.show()
+	
+	
+def box_plot(data):
     bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
     bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
-    
-    # unpacking the resampled data
-    oib_sit = data['oib']
-    smos_sit = data['smos']
-    cryo_sit = data['uit'][2]  # Assuming the third element is the SIT data
-    
-    # Flatten the list of arrays into a single array
-    all_oib = np.concatenate(oib_sit)
-    all_smos = np.concatenate(smos_sit)
-    all_cryo = np.concatenate(cryo_sit)
-    
-    # mask
-    mask = (all_oib >= 0) & (all_oib <= 1)
-    oib = all_oib[mask]
-    smos = all_smos[mask]
-    cryo = all_cryo[mask]
-    
-    smos_means = []
-    cryo_means = []
-    for i in range(len(bins)-1):
-        bin_mask = (oib >= bins[i]) & (oib < bins[i+1])
-        smos_means.append(np.mean(smos[bin_mask]))
-        cryo_means.append(np.mean(cryo[bin_mask]))
+ 
+    # --- Unpack ---
+    oib_sit = data['oib']['sit']
+    smos_sit = data['smos']['sit']
+    cryo_sit = data['uit'][2] # <--- Corrected here
 
-    # Set up the figure with one main plot and two smaller plots
-    fig = plt.figure(figsize=(10, 10))
+    # Flatten
+    oib = np.concatenate(oib_sit)
+    smos = np.concatenate(smos_sit)
+    cryo = np.concatenate(cryo_sit)
 
-    # Layout parameters
-    box_size = 0.4
-    main_height = 0.5
-    gap = (1 - 2 * box_size) / 3
-    gap_main = (1 - main_height - box_size) / 3
+    # Handle NaNs
+    valid_mask = ~np.isnan(oib) & ~np.isnan(cryo) & ~np.isnan(smos)
+    oib, cryo, smos = oib[valid_mask], cryo[valid_mask], smos[valid_mask]
+	
+    # Bin
+    binned_oib_cryo_data, binned_oib_smos_data = [], []
+    for i in range(len(bins) - 1):
+        bin_mask = (oib >= bins[i]) & (oib < bins[i + 1])
+        binned_oib_cryo_data.append(cryo[bin_mask])
+        binned_oib_smos_data.append(smos[bin_mask])
+  
+    # --- Plot ---
+    fig = plt.figure(figsize=(10, 10))  # 10x10 figure size
+    box_width = 0.4
+    gap = (1 - 2 * box_width) / 3
 
-    # Create axes
-    ax_main = fig.add_axes([gap, 2 * gap_main + box_size, 1 - 2 * gap, main_height])
-    ax_left = fig.add_axes([gap, gap_main, box_size, box_size])
-    ax_right = fig.add_axes([2 * gap + box_size, gap_main, box_size, box_size])
+    ax1 = fig.add_axes([gap, 0.2, box_width, 0.6])
+    ax2 = fig.add_axes([2 * gap + box_width, 0.2, box_width, 0.6])
 
-    # --- Main plot: Bar plot ---
-    x = np.arange(len(bin_labels))
-    width = 0.35  # width of the bars
+    # Left box plot
+    ax1.boxplot(binned_oib_cryo_data, positions=np.arange(len(bin_labels)), 
+                medianprops=dict(color='black'), patch_artist=True, showfliers=False,
+                boxprops=dict(facecolor='lightgray', alpha=0.6))
+    ax1.scatter(np.repeat(np.arange(len(bin_labels)), [len(d) for d in binned_oib_cryo_data]),
+                np.concatenate(binned_oib_cryo_data), color='green', alpha=0.7)
+    ax1.set_xticks(np.arange(len(bin_labels)))
+    ax1.set_xticklabels(bin_labels)
+    ax1.set_title('Cryo')
 
-    ax_main.bar(x - width/2, smos_means, width, label='SMOS', color='blue')
-    ax_main.bar(x + width/2, cryo_means, width, label='Cryo', color='salmon')
-    ax_main.set_ylabel('Mean SIT [m]')
-    ax_main.set_xlabel('OIB SIT bins [m]')
-    ax_main.set_title('Mean SIT from SMOS and Cryo by OIB bins')
-    ax_main.set_xticks(x)
-    ax_main.set_xticklabels(bin_labels)
-    ax_main.legend()
-    ax_main.grid(True)
-
-    # --- Bottom left plot: Histogram OIB vs Cryo ---
-    ax_left.hist(oib, bins=10, alpha=0.7, label='OIB', color='black')
-    ax_left.hist(cryo, bins=10, alpha=0.7, label='Cryo', color='green')
-    ax_left.legend()
-    ax_left.grid(True)
-
-    # --- Bottom right plot: Histogram OIB vs SMOS ---
-    ax_right.hist(oib, bins=10, alpha=0.7, label='OIB', color='black')
-    ax_right.hist(smos, bins=10, alpha=0.7, label='SMOS', color='blue')
-    ax_right.legend()
-    ax_right.grid(True)
+    # Right box plot
+    ax2.boxplot(binned_oib_smos_data, positions=np.arange(len(bin_labels)),
+                medianprops=dict(color='black'), patch_artist=True, showfliers=False,
+                boxprops=dict(facecolor='lightgray', alpha=0.6))
+    ax2.scatter(np.repeat(np.arange(len(bin_labels)), [len(d) for d in binned_oib_smos_data]),
+                np.concatenate(binned_oib_smos_data), color='blue', alpha=0.7)
+    ax2.set_xticks(np.arange(len(bin_labels)))
+    ax2.set_xticklabels(bin_labels)
+    ax2.set_title('SMOS')
 
     plt.show()
-    
-    
-    
-	
-    
-
  
 
 
@@ -486,4 +546,6 @@ if __name__ == "__main__":
 	
 	#plot_flight_paths_all(data)
 	#histogram_oib(data)
-	bar__hist_plot(resampled_data)
+	#smos_histogram(resampled_data)
+	#bar__hist_plot(resampled_data)
+	box_plot(resampled_data)
