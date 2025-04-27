@@ -669,7 +669,7 @@ def bar_with_histograms(
 
 		# ---- 3) Left histogram (SMOS vs Cryo & W99) ----
 		axL, axR = hist_axes[i]
-		axL.hist(smos_m, bins=bin_edges, color='#155084', zorder=0, label='SMOS')
+		axL.hist(smos_m, bins=bin_edges, alpha=0.7, color='black', zorder=0, label='SMOS')
 		axL.hist(cryo_m, bins=bin_edges, edgecolor='salmon', linewidth=1, fill=True, color='salmon', alpha=0.5, hatch='xx', zorder=1, label='UiT')
 		axL.hist(w99_m,  bins=bin_edges, edgecolor='skyblue', fill=False, hatch='xx', zorder=2, label='W99')
 		if i == 0:
@@ -681,7 +681,7 @@ def bar_with_histograms(
 		axL.set_yscale('log')
 
 		# ---- 4) Right histogram (SMOS vs AWI & CPOM) ----
-		axR.hist(smos_m, bins=bin_edges, color='#155084', zorder=0, label='SMOS')
+		axR.hist(smos_m, bins=bin_edges, alpha=0.7, color='black', zorder=0, label='SMOS')
 		axR.hist(awi_m,  bins=bin_edges, edgecolor='blueviolet', linewidth=1, fill=True, color = 'blueviolet' , alpha=0.5, hatch='xx', zorder=1, label='AWI')
 		axR.hist(cpom_m, bins=bin_edges, edgecolor='teal', fill=False, hatch='xx', zorder=2, label='CPOM')
 		axR.set_xlabel('SIT [m]')
@@ -1366,13 +1366,13 @@ def differences_combined_3months(cryo_oct, cryo_nov, cryo_dec,
  
 if __name__ == '__main__':
 	#multiple_box_plot_scatter(cryo_interp, cpom_interp, awi_interp, si_thickness_smos_dec)
-	multiple_box_plot_scatter_3x3(
-	cryo_data=[si_thickness_cryo_oct, si_thickness_cryo_nov, si_thickness_cryo_dec],
-	w99_data=[w99_resampled_sit_oct, w99_resampled_sit_nov, w99_resampled_sit_dec],
-	awi_data=[awi_resampled_sit_oct, awi_resampled_sit_nov, awi_resampled_sit_dec],
-	cpom_data=[cpom_resampled_sit_oct, cpom_resampled_sit_nov, cpom_resampled_sit_dec],
-	smos_data=[smos_resampled_sit_oct, smos_resampled_sit_nov, smos_resampled_sit_dec],
-	)
+	#multiple_box_plot_scatter_3x3(
+	#cryo_data=[si_thickness_cryo_oct, si_thickness_cryo_nov, si_thickness_cryo_dec],
+	#w99_data=[w99_resampled_sit_oct, w99_resampled_sit_nov, w99_resampled_sit_dec],
+	#awi_data=[awi_resampled_sit_oct, awi_resampled_sit_nov, awi_resampled_sit_dec],
+	#cpom_data=[cpom_resampled_sit_oct, cpom_resampled_sit_nov, cpom_resampled_sit_dec],
+	#smos_data=[smos_resampled_sit_oct, smos_resampled_sit_nov, smos_resampled_sit_dec],
+	#)
  
  
 	#barplot(
@@ -1383,13 +1383,13 @@ if __name__ == '__main__':
 	#smos_resampled_sit_oct, smos_resampled_sit_nov, smos_resampled_sit_dec
 	#)
 	#histogram_2(si_thickness_cryo_oct, w99_resampled_sit_oct, awi_resampled_sit_oct, cpom_resampled_sit_oct, smos_resampled_sit_oct)
-	#bar_with_histograms(
-	#si_thickness_cryo_oct, si_thickness_cryo_nov, si_thickness_cryo_dec,
-	#w99_resampled_sit_oct,  w99_resampled_sit_nov,  w99_resampled_sit_dec,
-	#cpom_resampled_sit_oct, cpom_resampled_sit_nov, cpom_resampled_sit_dec,
-	#awi_resampled_sit_oct,  awi_resampled_sit_nov,  awi_resampled_sit_dec,
-	#smos_resampled_sit_oct, smos_resampled_sit_nov, smos_resampled_sit_dec,
-	#)
+	bar_with_histograms(
+	si_thickness_cryo_oct, si_thickness_cryo_nov, si_thickness_cryo_dec,
+	w99_resampled_sit_oct,  w99_resampled_sit_nov,  w99_resampled_sit_dec,
+	cpom_resampled_sit_oct, cpom_resampled_sit_nov, cpom_resampled_sit_dec,
+	awi_resampled_sit_oct,  awi_resampled_sit_nov,  awi_resampled_sit_dec,
+	smos_resampled_sit_oct, smos_resampled_sit_nov, smos_resampled_sit_dec,
+	)
 	#bar_with_histograms_new(
 	#si_thickness_cryo_oct, si_thickness_cryo_nov, si_thickness_cryo_dec,
 	#w99_resampled_sit_oct,  w99_resampled_sit_nov,  w99_resampled_sit_dec,

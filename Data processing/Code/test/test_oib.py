@@ -6,6 +6,7 @@ import netCDF4 as nc
 import pandas as pd
 import cartopy.crs as ccrs
 import matplotlib.path as mpath
+from matplotlib.ticker import PercentFormatter
 
 
 import warnings
@@ -382,27 +383,107 @@ def histogram_oib(data):
 
 	# Create histogram
 	plt.figure(figsize=(10, 6))
-	plt.hist(all_sit, bins=50, alpha=0.7, label='OIB SIT', color='#155084')
+	plt.hist(all_sit, bins=50, label='OIB SIT', color='#155084', weights=np.ones_like(all_sit) / len(all_sit))
 	plt.axvspan(0, 1, color='red', alpha=0.3, label='Area of interest (0-1 m)')
-	plt.axvline(x=1, color='red', linestyle='--', alpha=0.5)
+	#plt.axvline(x=1, color='red', linestyle='--', alpha=0.5)
 	# add thicks inside the histogram
 	plt.tick_params(axis='both', direction='in')
 	plt.xlim(0, 15)
 	plt.xlabel('Sea Ice Thickness (m)')
-	plt.ylabel('Frequency')
+	plt.gca().yaxis.set_major_formatter(PercentFormatter(1))
+	plt.ylabel('Observations (%)')
 	plt.title('Histogram of OIB Sea Ice Thickness')
 	plt.legend()
 	plt.grid()
 	plt.show()
  
-# call on the plotting function to plot all flight paths
-data = get_all_data()
-reprojected_data = reproject_all_data(data)
+def bar__hist_plot(data):
+    bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+    bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+    
+    # unpacking the resampled data
+    oib_sit = data['oib']
+    smos_sit = data['smos']
+    cryo_sit = data['uit'][2]  # Assuming the third element is the SIT data
+    
+    # Flatten the list of arrays into a single array
+    all_oib = np.concatenate(oib_sit)
+    all_smos = np.concatenate(smos_sit)
+    all_cryo = np.concatenate(cryo_sit)
+    
+    # mask
+    mask = (all_oib >= 0) & (all_oib <= 1)
+    oib = all_oib[mask]
+    smos = all_smos[mask]
+    cryo = all_cryo[mask]
+    
+    smos_means = []
+    cryo_means = []
+    for i in range(len(bins)-1):
+        bin_mask = (oib >= bins[i]) & (oib < bins[i+1])
+        smos_means.append(np.mean(smos[bin_mask]))
+        cryo_means.append(np.mean(cryo[bin_mask]))
+
+    # Set up the figure with one main plot and two smaller plots
+    fig = plt.figure(figsize=(10, 10))
+
+    # Layout parameters
+    box_size = 0.4
+    main_height = 0.5
+    gap = (1 - 2 * box_size) / 3
+    gap_main = (1 - main_height - box_size) / 3
+
+    # Create axes
+    ax_main = fig.add_axes([gap, 2 * gap_main + box_size, 1 - 2 * gap, main_height])
+    ax_left = fig.add_axes([gap, gap_main, box_size, box_size])
+    ax_right = fig.add_axes([2 * gap + box_size, gap_main, box_size, box_size])
+
+    # --- Main plot: Bar plot ---
+    x = np.arange(len(bin_labels))
+    width = 0.35  # width of the bars
+
+    ax_main.bar(x - width/2, smos_means, width, label='SMOS', color='blue')
+    ax_main.bar(x + width/2, cryo_means, width, label='Cryo', color='salmon')
+    ax_main.set_ylabel('Mean SIT [m]')
+    ax_main.set_xlabel('OIB SIT bins [m]')
+    ax_main.set_title('Mean SIT from SMOS and Cryo by OIB bins')
+    ax_main.set_xticks(x)
+    ax_main.set_xticklabels(bin_labels)
+    ax_main.legend()
+    ax_main.grid(True)
+
+    # --- Bottom left plot: Histogram OIB vs Cryo ---
+    ax_left.hist(oib, bins=10, alpha=0.7, label='OIB', color='black')
+    ax_left.hist(cryo, bins=10, alpha=0.7, label='Cryo', color='green')
+    ax_left.legend()
+    ax_left.grid(True)
+
+    # --- Bottom right plot: Histogram OIB vs SMOS ---
+    ax_right.hist(oib, bins=10, alpha=0.7, label='OIB', color='black')
+    ax_right.hist(smos, bins=10, alpha=0.7, label='SMOS', color='blue')
+    ax_right.legend()
+    ax_right.grid(True)
+
+    plt.show()
+    
+    
+    
+	
+    
+
+ 
+
+
 
 
 
 
 
 if __name__ == "__main__":
-	plot_flight_paths_all(data)
-	histogram_oib(data)
+	data = get_all_data()
+	reprojected_data = reproject_all_data(data)
+	resampled_data = resample_all_data(reprojected_data, radius=12500)
+	
+	#plot_flight_paths_all(data)
+	#histogram_oib(data)
+	bar__hist_plot(resampled_data)
