@@ -242,16 +242,19 @@ def hist_cryo_smos_oib(cryo_sit, oib_sit, smos_sit):
 	smos_sit = smos_sit.flatten()
 	
 	# Create histogram
-	plt.hist(oib_sit, bins=100, alpha=0.5, color='green', label='OIB', density=True)
-	plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='OiB', density=True)
-	plt.hist(smos_sit, bins=100, alpha=0.5, color='red', label='SMOS', density=True)
+	mask = (oib_sit >= 0) & (oib_sit <= 1)
+	oib_sit = oib_sit[mask]
+	plt.hist(oib_sit, bins=50, label='OIB SIT', color='black', alpha=0.7)
+	#plt.hist(cryo_sit, bins=100, alpha=0.5, color='blue', label='OiB', density=True)
+	#plt.hist(smos_sit, bins=100, alpha=0.5, color='red', label='SMOS', density=True)
 	
-	# Labels and title
-	plt.xlabel("Sea Ice Thickness [m]")
-	plt.ylabel("PDF")
-	plt.title("Histogram: After Resampling")
+	plt.tick_params(axis='both', direction='in')
+	plt.xlim(0, 15)
+	plt.xlabel('Sea Ice Thickness (m)')
+	plt.ylabel('Observations (counts)')
+	plt.title('filtered OIB SIT (25km grid)')
 	plt.legend()
-	plt.grid(True, linestyle="--", alpha=0.5)
+	plt.grid()
 	plt.show()
 
 
@@ -569,11 +572,12 @@ def differences(cryo_sit, smos_sit, oib_sit):
 
 if __name__ == "__main__":
 	#plot_fligth_paths(oib_paths_2014, oib_paths_2015, oib_paths_2017)	
+	hist_cryo_smos_oib(cryo_sit, resampled_oib_sit, resampled_smos_sit)
  
  	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, cryo_sit, 'CryoSat-2 vs OiB')
 	#plot_cryo_oib(cryo_lat, cryo_lon, resampled_oib_sit, cryo_lat, cryo_lon, resampled_smos_sit, 'SMOS vs OiB') 
 	#pair_scatter_plot(resampled_oib_sit, cryo_sit)
-	scatter_oib_cryo_pair(x_cryo, y_cryo, cryo_sit, resampled_oib_sit)
+	#scatter_oib_cryo_pair(x_cryo, y_cryo, cryo_sit, resampled_oib_sit)
 	
  	#hist_cryo_smos_oib(cryo_sit, resampled_oib_sit, resampled_smos_sit)
 	#boxplot(cryo_sit, resampled_smos_sit, resampled_oib_sit)

@@ -399,16 +399,17 @@ def histogram_oib(data):
 def plot_sit(data, cryo_lat, cryo_lon):
 	oib_sit = data['oib']
 	
-	all_sit = np.concatenate(oib_sit)
-	
+	all_sit = oib_sit.flatten()
+	mask = (all_sit >= 0) & (all_sit <= 1)
+	all_sit = all_sit[mask]
 	plt.figure(figsize=(10, 6))
 	plt.hist(all_sit, bins=50, label='OIB SIT', color='black', alpha=0.7)
-	plt.axvspan(0, 1, color='red', alpha=0.3, label='Area of interest (0-1 m)')
+	#plt.axvspan(0, 1, color='red', alpha=0.3, label='Area of interest (0-1 m)')
 	plt.tick_params(axis='both', direction='in')
 	plt.xlim(0, 15)
 	plt.xlabel('Sea Ice Thickness (m)')
 	plt.ylabel('Observations (counts)')
-	plt.title('filtered OIB Sea Ice Thickness (25km grid)')
+	plt.title('filtered OIB + Quicklook SIT (25km grid)')
 	plt.legend()
 	plt.grid()
 	plt.show()
@@ -428,10 +429,13 @@ def plot_sit(data, cryo_lat, cryo_lon):
 				   linewidth=0.5,alpha=0.5,zorder=4)
 	ax.add_feature(cfeature.COASTLINE,color="black",linewidth=0.1,zorder=5)
 	ax.gridlines(draw_labels=True, color="dimgray", zorder=7)
- 
-	oib_sit = oib_sit.reshape(cryo_lat.shape)
-	mesh=ax.pcolormesh(cryo_lon, cryo_lat, all_sit, transform=ccrs.PlateCarree(), cmap='viridis', zorder=6)
-	plt.colorbar(mesh, ax=ax, label='Sea Ice Thickness (m)')
+	
+	cryo_lon = np.array(cryo_lon)
+	cryo_lat = np.array(cryo_lat)
+	#mesh=ax.pcolormesh(cryo_lon, cryo_lat, oib_sit, transform=ccrs.PlateCarree(), cmap='viridis', zorder=6)
+	#plt.colorbar(mesh, ax=ax, label='Sea Ice Thickness (m)')
+	scatter = ax.scatter(cryo_lon, cryo_lat, c=oib_sit, cmap='viridis', s=1, transform=ccrs.PlateCarree(), zorder=6)
+	plt.colorbar(scatter, ax=ax, label='Sea Ice Thickness (m)')
 	plt.title('OIB Sea Ice Thickness (25km grid)')
 	plt.show()
 	
@@ -502,25 +506,24 @@ def bar_hist_plot(data):
 	#oib_m_smos = oib_smos[range_mask_smos]
 	bin_edges=np.linspace(0,1,11)
  
-	# --- Bottom left plot: Histogram OIB vs Cryo ---
-	ax_left.hist(oib_m, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
-	ax_left.hist(cryo_m, bins=bin_edges, edgecolor='green', color="green", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='UiT', density=True)
-	ax_left.tick_params(axis='both', direction='in')
-	ax_left.set_xlabel('SIT [m]')
-	ax_left.set_ylabel('Counts')
-	ax_left.yaxis.set_major_formatter(PercentFormatter(1))
-	ax_left.grid(alpha=0.5, linestyle='--')
-	ax_left.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False) 
-	
-
-	# --- Bottom right plot: Histogram OIB vs SMOS ---
+	# --- Bottom right plot: Histogram OIB vs Cryo ---
 	ax_right.hist(oib_m, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
-	ax_right.hist(smos_m, bins=bin_edges, edgecolor='blue', color="blue", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='SMOS', density=True)
-	ax_right.set_xlabel('SIT [m]')
+	ax_right.hist(cryo_m, bins=bin_edges, edgecolor='green', color="green", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='UiT', density=True)
 	ax_right.tick_params(axis='both', direction='in')
+	ax_right.set_xlabel('SIT [m]')
+	ax_right.set_ylabel('Counts')
 	ax_right.yaxis.set_major_formatter(PercentFormatter(1))
 	ax_right.grid(alpha=0.5, linestyle='--')
-	ax_right.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False)
+	ax_right.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False) 
+	
+	# --- Bottom left plot: Histogram OIB vs SMOS ---
+	ax_left.hist(oib_m, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
+	ax_left.hist(smos_m, bins=bin_edges, edgecolor='blue', color="blue", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='SMOS', density=True)
+	ax_left.set_xlabel('SIT [m]')
+	ax_left.tick_params(axis='both', direction='in')
+	ax_left.yaxis.set_major_formatter(PercentFormatter(1))
+	ax_left.grid(alpha=0.5, linestyle='--')
+	ax_left.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False)
 
 	plt.show()
 	
@@ -541,10 +544,13 @@ def box_plot(data):
 	cryo = cryo_sit.flatten()
 
 	# Handle NaNs
-	valid_mask = ~np.isnan(oib) & ~np.isnan(cryo) & ~np.isnan(smos)
-	oib, cryo, smos = oib[valid_mask], cryo[valid_mask], smos[valid_mask]
+	nan_mask = ~np.isnan(oib) & ~np.isnan(smos) & ~np.isnan(cryo)
+	oib, smos, cryo = [arr[nan_mask] for arr in (oib, smos, cryo)]
 	
 	#smos_mask = (smos >= 0) & (smos <= 1)
+	#cryo_mask = (cryo >= 0) & (cryo <= 1.4)
+	#cryo = cryo[cryo_mask]
+	#oib_c = oib[cryo_mask]
 	#smos = smos[smos_mask]
 	#oib_smos = oib[smos_mask]
  
@@ -553,6 +559,7 @@ def box_plot(data):
 	for i in range(len(bins) - 1):
 		bin_mask = (oib >= bins[i]) & (oib < bins[i + 1])
 		#bin_mask_smos = (oib_smos >= bins[i]) & (oib_smos < bins[i+1])
+		#bin_mask_cryo = (oib_c >= bins[i]) & (oib_c < bins[i + 1])
 		binned_oib_cryo_data.append(cryo[bin_mask])
 		binned_oib_smos_data.append(smos[bin_mask])
   
@@ -565,25 +572,32 @@ def box_plot(data):
 	ax2 = fig.add_axes([2 * gap + box_width, 0.2, box_width, 0.6])
 
 	# Left box plot
-	ax1.boxplot(binned_oib_cryo_data, labels = bin_labels, medianprops=dict(color='black'), patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
+	ax1.boxplot(binned_oib_cryo_data, labels = bin_labels, medianprops=dict(color='black'), meanprops=dict(color="#f7022a"), showmeans=True, meanline=True, patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
+	ax1.plot([], [], "--", linewidth=1, color = "#f7022a", label = "Mean")
+	ax1.plot([], [], "-", linewidth=1, color = "black", label = "Median")
+ 
 	# scatter 
 	for i, data in enumerate(binned_oib_cryo_data):
 		x = np.random.normal(i + 1, 0.05, size=len(data))
-		ax1.scatter(x, data, color='green', alpha=0.7, label='UiT', edgecolor="none", linewidth=0.)
+		ax1.scatter(x, data, color='green', alpha=0.7, edgecolor="none", linewidth=0.)
 	ax1.set_ylabel('UiT SIT [m]')
 	ax1.set_xlabel('OIB SIT bins [m]')
 	ax1.tick_params(axis='both', direction='in')
+	ax1.legend(frameon=False, loc='upper left', bbox_to_anchor=(0.0, 1.08), ncol=2, borderaxespad=0.0, handletextpad=0.3)
 	
 	
 	# Right box plot
 	#ax2.boxplot(binned_oib_smos_data, labels = bin_labels, medianprops=dict(color='black'), patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
-	ax2.boxplot(binned_oib_smos_data, labels = bin_labels, showmeans=True, meanline=True, patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
+	ax2.boxplot(binned_oib_smos_data, labels = bin_labels, medianprops=dict(color='black'), showmeans=True, meanline=True, meanprops=dict(color="#f7022a"), patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
+	ax2.plot([], [], "--", linewidth=1, color = "#f7022a", label = "Mean")
+	ax2.plot([], [], "-", linewidth=1, color = "black", label = "Median")
 	for i, data in enumerate(binned_oib_smos_data):
 		x = np.random.normal(i + 1, 0.05, size=len(data))
-		ax2.scatter(x, data, color='blue', alpha=0.7, label='SMOS', edgecolor="none", linewidth=0.)
+		ax2.scatter(x, data, color='blue', alpha=0.7, edgecolor="none", linewidth=0.)
 	ax2.set_ylabel('SMOS SIT [m]')
 	ax2.set_xlabel('OIB SIT bins [m]')
 	ax2.tick_params(axis='both', direction='in')
+	#ax2.legend(frameon=False, loc='upper left', bbox_to_anchor=(0.5, 1.08), ncol=2, borderaxespad=0.0, handletextpad=0.3)
 
 	# Add grid lines
 	ax1.grid(axis='y', linestyle='--', alpha=0.5)
@@ -620,8 +634,9 @@ def heat_map(data):
 	plt.xlabel('OIB SIT bins [m]')
 	plt.show()
 	
-	
-
+def stat_matrics(data):
+    pass
+    
 	
 
 
@@ -636,8 +651,8 @@ if __name__ == "__main__":
 	
 	#plot_flight_paths_all(data)
 	#histogram_oib(data)
-	plot_sit(resampled_data, resampled_data['uit'][0], resampled_data['uit'][1])
+	#plot_sit(resampled_data, data['uit']['lat'], data['uit']['lon'])
  
 	#bar_hist_plot(resampled_data)
-	box_plot(resampled_data)
-	#heat_map(resampled_data)
+	#box_plot(resampled_data)
+	heat_map(resampled_data)
