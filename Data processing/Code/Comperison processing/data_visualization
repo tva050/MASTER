@@ -1029,19 +1029,7 @@ def heatmap_sea_ice_difference_3months(
 				mean_differences[2, i] = np.nanmean(cpom_flat[mask] - smos_flat[mask])
 				mean_differences[3, i] = np.nanmean(awi_flat[mask] - smos_flat[mask])
 
-		sns.heatmap(
-			mean_differences,
-			annot=True,
-			cmap="plasma",
-			fmt=".2f",
-			xticklabels=bin_labels,
-			yticklabels=satellite_products,  # Show labels in every subplot
-			center=0,
-			ax=ax,
-			cbar=(idx == 2),
-			cbar_kws={"label": "Mean Difference (m)"}
-		)
-
+		sns.heatmap(mean_differences, annot=True, cmap="plasma", fmt=".2f", xticklabels=bin_labels, yticklabels=satellite_products,  center=0, ax=ax, cbar=(idx == 2), cbar_kws={"label": "Mean Difference (m)"})
 		ax.set_title(month_names[idx])
 		ax.set_xlabel("SMOS SIT Bins [m]")
 

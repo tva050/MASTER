@@ -7,6 +7,7 @@ import pandas as pd
 import cartopy.crs as ccrs
 import matplotlib.path as mpath
 from matplotlib.ticker import PercentFormatter
+import seaborn as sns
 
 
 import warnings
@@ -242,11 +243,6 @@ def reproject_all_data(data):
 	return out
 
 def resample_to_cryo_grid(x_source, y_source, source_sit, source_sit_un, x_target, y_target, radius=12500):
-	""" 
-	Resample source data onto a new grid using weighted average based on uncertainty.
-	If no valid data, leave as NaN.
-	If no points are found in the radius, set to NaN.
-	"""
 	target_tree = cKDTree(np.column_stack([x_target.ravel(), y_target.ravel()]))  # Tree for faster lookup
 
 	# Initialize arrays to store resampled data and weight sums
@@ -397,7 +393,52 @@ def histogram_oib(data):
 	plt.grid()
 	plt.show()
  
-def bar__hist_plot(data):
+
+ 
+ 
+def plot_sit(data, cryo_lat, cryo_lon):
+	oib_sit = data['oib']
+	
+	all_sit = np.concatenate(oib_sit)
+	
+	plt.figure(figsize=(10, 6))
+	plt.hist(all_sit, bins=50, label='OIB SIT', color='black', alpha=0.7)
+	plt.axvspan(0, 1, color='red', alpha=0.3, label='Area of interest (0-1 m)')
+	plt.tick_params(axis='both', direction='in')
+	plt.xlim(0, 15)
+	plt.xlabel('Sea Ice Thickness (m)')
+	plt.ylabel('Observations (counts)')
+	plt.title('filtered OIB Sea Ice Thickness (25km grid)')
+	plt.legend()
+	plt.grid()
+	plt.show()
+ 
+ 
+	fig = plt.figure(figsize=(10,6))
+	ax  = fig.add_subplot(1,1,1, projection=ccrs.NorthPolarStereo())
+	ax.set_extent([-3e6, 3e6, -3e6, 3e6], ccrs.NorthPolarStereo())
+
+	# map features
+	ax.coastlines()
+	ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1,   zorder=2)
+	ax.add_feature(cfeature.OCEAN,facecolor="lightgray",alpha=0.5,zorder=1)
+	ax.add_feature(cfeature.LAKES,edgecolor='gray',facecolor="white",
+				   linewidth=0.5,alpha=0.5,zorder=3)
+	ax.add_feature(cfeature.RIVERS,edgecolor='lightgray',facecolor="white",
+				   linewidth=0.5,alpha=0.5,zorder=4)
+	ax.add_feature(cfeature.COASTLINE,color="black",linewidth=0.1,zorder=5)
+	ax.gridlines(draw_labels=True, color="dimgray", zorder=7)
+ 
+	oib_sit = oib_sit.reshape(cryo_lat.shape)
+	mesh=ax.pcolormesh(cryo_lon, cryo_lat, all_sit, transform=ccrs.PlateCarree(), cmap='viridis', zorder=6)
+	plt.colorbar(mesh, ax=ax, label='Sea Ice Thickness (m)')
+	plt.title('OIB Sea Ice Thickness (25km grid)')
+	plt.show()
+	
+
+#-- Plotting functions -- 
+ 
+def bar_hist_plot(data):
 	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
 	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
 	
@@ -413,11 +454,16 @@ def bar__hist_plot(data):
 	
 	nan_mask = ~np.isnan(oib) & ~np.isnan(smos) & ~np.isnan(cryo)
 	oib, smos, cryo = [arr[nan_mask] for arr in (oib, smos, cryo)]
-		
+
+	#smos_mask = (smos >= 0) & (smos <= 1)
+	#smos = smos[smos_mask]
+	#oib_smos = oib[smos_mask]
+ 
 	smos_means = []
 	cryo_means = []
 	for i in range(len(bins)-1): #
 		bin_mask = (oib >= bins[i]) & (oib < bins[i+1])
+		#bin_mask_smos = (oib_smos >= bins[i]) & (oib_smos < bins[i+1])
 		smos_means.append(np.mean(smos[bin_mask])) 
 		cryo_means.append(np.mean(cryo[bin_mask]))
 
@@ -451,7 +497,9 @@ def bar__hist_plot(data):
  
 	# histogram mask
 	range_mask = (oib >= 0) & (oib <= 1)
+	#range_mask_smos = (oib_smos >= 0) & (oib_smos <= 1)
 	oib_m, smos_m, cryo_m = oib[range_mask], smos[range_mask], cryo[range_mask]
+	#oib_m_smos = oib_smos[range_mask_smos]
 	bin_edges=np.linspace(0,1,11)
  
 	# --- Bottom left plot: Histogram OIB vs Cryo ---
@@ -478,61 +526,103 @@ def bar__hist_plot(data):
 	
 	
 def box_plot(data):
-    bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
-    bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
- 
-    # --- Unpack ---
-    oib_sit = data['oib']['sit']
-    smos_sit = data['smos']['sit']
-    cryo_sit = data['uit'][2] # <--- Corrected here
-
-    # Flatten
-    oib = np.concatenate(oib_sit)
-    smos = np.concatenate(smos_sit)
-    cryo = np.concatenate(cryo_sit)
-
-    # Handle NaNs
-    valid_mask = ~np.isnan(oib) & ~np.isnan(cryo) & ~np.isnan(smos)
-    oib, cryo, smos = oib[valid_mask], cryo[valid_mask], smos[valid_mask]
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
 	
-    # Bin
-    binned_oib_cryo_data, binned_oib_smos_data = [], []
-    for i in range(len(bins) - 1):
-        bin_mask = (oib >= bins[i]) & (oib < bins[i + 1])
-        binned_oib_cryo_data.append(cryo[bin_mask])
-        binned_oib_smos_data.append(smos[bin_mask])
-  
-    # --- Plot ---
-    fig = plt.figure(figsize=(10, 10))  # 10x10 figure size
-    box_width = 0.4
-    gap = (1 - 2 * box_width) / 3
+	# unpacking the resampled data
+	oib_sit = data['oib']
+	smos_sit = data['smos']
+	cryo_sit = data['uit'][2]  # Third element is the SIT data
+	
 
-    ax1 = fig.add_axes([gap, 0.2, box_width, 0.6])
-    ax2 = fig.add_axes([2 * gap + box_width, 0.2, box_width, 0.6])
+	# Flatten
+	oib  = oib_sit.flatten()
+	smos = smos_sit.flatten()
+	cryo = cryo_sit.flatten()
 
-    # Left box plot
-    ax1.boxplot(binned_oib_cryo_data, positions=np.arange(len(bin_labels)), 
-                medianprops=dict(color='black'), patch_artist=True, showfliers=False,
-                boxprops=dict(facecolor='lightgray', alpha=0.6))
-    ax1.scatter(np.repeat(np.arange(len(bin_labels)), [len(d) for d in binned_oib_cryo_data]),
-                np.concatenate(binned_oib_cryo_data), color='green', alpha=0.7)
-    ax1.set_xticks(np.arange(len(bin_labels)))
-    ax1.set_xticklabels(bin_labels)
-    ax1.set_title('Cryo')
-
-    # Right box plot
-    ax2.boxplot(binned_oib_smos_data, positions=np.arange(len(bin_labels)),
-                medianprops=dict(color='black'), patch_artist=True, showfliers=False,
-                boxprops=dict(facecolor='lightgray', alpha=0.6))
-    ax2.scatter(np.repeat(np.arange(len(bin_labels)), [len(d) for d in binned_oib_smos_data]),
-                np.concatenate(binned_oib_smos_data), color='blue', alpha=0.7)
-    ax2.set_xticks(np.arange(len(bin_labels)))
-    ax2.set_xticklabels(bin_labels)
-    ax2.set_title('SMOS')
-
-    plt.show()
+	# Handle NaNs
+	valid_mask = ~np.isnan(oib) & ~np.isnan(cryo) & ~np.isnan(smos)
+	oib, cryo, smos = oib[valid_mask], cryo[valid_mask], smos[valid_mask]
+	
+	#smos_mask = (smos >= 0) & (smos <= 1)
+	#smos = smos[smos_mask]
+	#oib_smos = oib[smos_mask]
  
+	# Bin
+	binned_oib_cryo_data, binned_oib_smos_data = [], []
+	for i in range(len(bins) - 1):
+		bin_mask = (oib >= bins[i]) & (oib < bins[i + 1])
+		#bin_mask_smos = (oib_smos >= bins[i]) & (oib_smos < bins[i+1])
+		binned_oib_cryo_data.append(cryo[bin_mask])
+		binned_oib_smos_data.append(smos[bin_mask])
+  
+	# --- Plot ---
+	fig = plt.figure(figsize=(10, 5))  # 10x10 figure size
+	box_width = 0.4
+	gap = (1 - 2 * box_width) / 3
 
+	ax1 = fig.add_axes([gap, 0.2, box_width, 0.6])
+	ax2 = fig.add_axes([2 * gap + box_width, 0.2, box_width, 0.6])
+
+	# Left box plot
+	ax1.boxplot(binned_oib_cryo_data, labels = bin_labels, medianprops=dict(color='black'), patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
+	# scatter 
+	for i, data in enumerate(binned_oib_cryo_data):
+		x = np.random.normal(i + 1, 0.05, size=len(data))
+		ax1.scatter(x, data, color='green', alpha=0.7, label='UiT', edgecolor="none", linewidth=0.)
+	ax1.set_ylabel('UiT SIT [m]')
+	ax1.set_xlabel('OIB SIT bins [m]')
+	ax1.tick_params(axis='both', direction='in')
+	
+	
+	# Right box plot
+	#ax2.boxplot(binned_oib_smos_data, labels = bin_labels, medianprops=dict(color='black'), patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
+	ax2.boxplot(binned_oib_smos_data, labels = bin_labels, showmeans=True, meanline=True, patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
+	for i, data in enumerate(binned_oib_smos_data):
+		x = np.random.normal(i + 1, 0.05, size=len(data))
+		ax2.scatter(x, data, color='blue', alpha=0.7, label='SMOS', edgecolor="none", linewidth=0.)
+	ax2.set_ylabel('SMOS SIT [m]')
+	ax2.set_xlabel('OIB SIT bins [m]')
+	ax2.tick_params(axis='both', direction='in')
+
+	# Add grid lines
+	ax1.grid(axis='y', linestyle='--', alpha=0.5)
+	ax2.grid(axis='y', linestyle='--', alpha=0.5)
+
+	plt.show()
+
+def heat_map(data):
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+	satellite_products = ["CryoSat-2", "SMOS"]
+ 
+	# Unpack
+	oib_sit = data['oib']
+	smos_sit = data['smos']
+	cryo_sit = data['uit'][2]  # Assuming the third element is the SIT data
+
+	# Flatten the list of arrays into a single array
+	oib = np.concatenate(oib_sit)
+	smos = np.concatenate(smos_sit)
+	cryo = np.concatenate(cryo_sit)
+
+	nan_mask = ~np.isnan(oib) & ~np.isnan(smos) & ~np.isnan(cryo)
+	oib, smos, cryo = [arr[nan_mask] for arr in (oib, smos, cryo)]
+ 
+	mean_difference = np.zeros((len(satellite_products), len(bins) - 1))
+	for i in range(len(bins) - 1):
+		bin_mask = (oib >= bins[i]) & (oib < bins[i + 1])
+		mean_difference[0, i] = np.mean(cryo[bin_mask]) - np.mean(oib[bin_mask])
+		mean_difference[1, i] = np.mean(smos[bin_mask]) - np.mean(oib[bin_mask])
+  
+	plt.figure(figsize=(10,5))
+	ax = sns.heatmap(mean_difference, annot=True, cmap="plasma", fmt=".2f", xticklabels=bin_labels, yticklabels=satellite_products, center=0, cbar_kws={"label": "Mean Difference [m]"})
+	plt.xlabel('OIB SIT bins [m]')
+	plt.show()
+	
+	
+
+	
 
 
 
@@ -546,6 +636,8 @@ if __name__ == "__main__":
 	
 	#plot_flight_paths_all(data)
 	#histogram_oib(data)
-	#smos_histogram(resampled_data)
-	#bar__hist_plot(resampled_data)
+	plot_sit(resampled_data, resampled_data['uit'][0], resampled_data['uit'][1])
+ 
+	#bar_hist_plot(resampled_data)
 	box_plot(resampled_data)
+	#heat_map(resampled_data)
