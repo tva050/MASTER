@@ -13,7 +13,7 @@ from mpl_toolkits.basemap import Basemap
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import matplotlib.path as mpath
-
+from matplotlib.ticker import PercentFormatter
 
 """ 
 Plan 
@@ -509,6 +509,23 @@ def mooring_locations():
 	plt.tight_layout()
 	plt.show()
 
+def histogram_mooring():
+	#mooring_df = mooring_df["mean_draft"]
+	
+	plt.figure(figsize=(10, 6))
+	plt.hist(mooring_A_draft, bins=50, label='Mooring A SID', color='black', alpha=0.7, weights=np.ones_like(mooring_A_draft) / len(mooring_A_draft))
+	plt.axvspan(0, 1, color='red', alpha=0.3, label='Area of interest (0-1 m)')
+	#plt.axvline(x=1, color='red', linestyle='--', alpha=0.5)
+	# add thicks inside the histogram
+	plt.tick_params(axis='both', direction='in')
+	#plt.xlim(0, 15)
+	plt.xlabel('Sea Ice Draft [m]')
+	plt.gca().yaxis.set_major_formatter(PercentFormatter(1))
+	plt.ylabel('Observations (%)')
+	plt.title('Histogram of Mooring A Sea Ice Draft')
+	plt.legend()
+	plt.grid()
+	plt.show()
 
 def mooring_draft_range(mooring_df, satellite_df):
 	mask = (mooring_df["mean_draft"] >= 0) & (mooring_df["mean_draft"] <= 1)
@@ -927,7 +944,8 @@ def histogram():
  
  
 if __name__ == "__main__":
-	mooring_locations()
+	#mooring_locations()
+	histogram_mooring()
 	#times_series_all()
 	#single_anomaly()
 	#draft_anomalies()
