@@ -145,6 +145,7 @@ monthly_stats_A = monthly_statistics(ids_A, dates_A)
 monthly_stats_B = monthly_statistics(ids_B, dates_B)
 monthly_stats_D = monthly_statistics(ids_D, dates_D)
 
+
 def get_cyro(folder_path):
 	""" 
 	Reads CryoSat-2 data from NetCDF files in the specified folder and extracts relevant 
@@ -468,6 +469,16 @@ mooring_D_draft = monthly_stats_D["mean_draft"]
 cryosat_D_draft = cryosat_stats_D["mean_draft"]
 smos_D_draft = smos_stats_D["mean_draft"]
 
+plt.rcParams.update({
+		'font.family':      'serif',
+		'font.size':         10,
+		'axes.labelsize':    10,
+		'xtick.labelsize':   8,
+		'ytick.labelsize':   8,
+		'legend.fontsize':   10,
+		'figure.titlesize':  10,
+}) 
+ 
 
 def mooring_locations():
 	fig = plt.figure(figsize=(10, 10))
@@ -510,15 +521,11 @@ def mooring_locations():
 	plt.show()
 
 def histogram_mooring():
-	#mooring_df = mooring_df["mean_draft"]
-	
+	print(monthly_stats_A.head())
 	plt.figure(figsize=(10, 6))
-	plt.hist(mooring_A_draft, bins=50, label='Mooring A SID', color='black', alpha=0.7, weights=np.ones_like(mooring_A_draft) / len(mooring_A_draft))
+	plt.hist(mooring_A_draft, bins=20, label='Mooring A SID', color='black', alpha=0.7, weights=np.ones_like(mooring_A_draft) / len(mooring_A_draft))
 	plt.axvspan(0, 1, color='red', alpha=0.3, label='Area of interest (0-1 m)')
-	#plt.axvline(x=1, color='red', linestyle='--', alpha=0.5)
-	# add thicks inside the histogram
 	plt.tick_params(axis='both', direction='in')
-	#plt.xlim(0, 15)
 	plt.xlabel('Sea Ice Draft [m]')
 	plt.gca().yaxis.set_major_formatter(PercentFormatter(1))
 	plt.ylabel('Observations (%)')
