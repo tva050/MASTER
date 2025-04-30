@@ -501,11 +501,13 @@ def bar_hist_plot(data):
  
 	# histogram mask
 	range_mask = (oib >= 0) & (oib <= 1) 
-	oib_m, smos_m, cryo_m = oib[range_mask], smos[range_mask], cryo[range_mask]
+	range_mask_c = (oib_c >= 0) & (oib_c <= 1)
+	oib_m, smos_m, cryo_m = oib[range_mask], smos[range_mask], cryo[range_mask_c]
+	oib_m_c = oib_c[range_mask_c]
 	bin_edges=np.linspace(0,1,11)
  
 	# --- Bottom right plot: Histogram OIB vs Cryo ---
-	ax_right.hist(oib_m, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
+	ax_right.hist(oib_m_c, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
 	ax_right.hist(cryo_m, bins=bin_edges, edgecolor='green', color="green", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='UiT', density=True)
 	ax_right.tick_params(axis='both', direction='in')
 	ax_right.set_xlabel('SIT [m]')
@@ -626,7 +628,7 @@ def heat_map(data):
 	for i in range(len(bins) - 1):
 		bin_mask = (oib >= bins[i]) & (oib < bins[i + 1])
 		bin_mask_cryo = (oib_c >= bins[i]) & (oib_c < bins[i + 1])
-		mean_difference[0, i] = np.mean(cryo[bin_mask_cryo]) - np.mean(oib[bin_mask_cryo])
+		mean_difference[0, i] = np.mean(cryo[bin_mask_cryo]) - np.mean(oib_c[bin_mask_cryo])
 		mean_difference[1, i] = np.mean(smos[bin_mask]) - np.mean(oib[bin_mask])
   
 	plt.figure(figsize=(10,5))
@@ -678,15 +680,27 @@ def stat_matrics(data):
 			continue
 
 		oib_bin = oib[bin_mask]
-		arrs = {p: products[p][bin_mask] for p in products}
- 
+		smos_bin = smos[bin_mask]
+		cryo_bin = cryo[bin_mask_cryo]
+		oib_cryo_bin = oib_c[bin_mask_cryo]
+
+		arrs = {
+			'UiT': cryo_bin,
+			'SMOS': smos_bin
+		}
+		oib_for_product = {
+			'UiT': oib_cryo_bin,
+			'SMOS': oib_bin
+		}
+  
 		raw = {}
 		for p, arr in arrs.items():
-			b    = np.mean(arr - oib_bin)
-			r    = np.sqrt(np.mean((arr - oib_bin)**2))
-			c    = np.corrcoef(arr, oib_bin)[0,1]
+			oib_ref = oib_for_product[p]
+			b = np.mean(arr - oib_ref)
+			r = np.sqrt(np.mean((arr - oib_ref)**2))
+			c = np.corrcoef(arr, oib_ref)[0,1]
 			raw[p] = dict(bias=b, rmse=r, cc=c)
-
+   
 		# normalize each metric across products in this bin
 		for metric in ('bias','rmse','cc'):
 			vals = np.array([ raw[p][metric] for p in products ])
@@ -725,5 +739,5 @@ if __name__ == "__main__":
  
 	#bar_hist_plot(resampled_data)
 	#box_plot(resampled_data)
-	#heat_map(resampled_data)
+	heat_map(resampled_data)
 	stat_matrics(resampled_data)
