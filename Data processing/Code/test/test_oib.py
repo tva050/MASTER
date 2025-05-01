@@ -635,8 +635,96 @@ def heat_map(data):
 	ax = sns.heatmap(mean_difference, annot=True, cmap="plasma", fmt=".2f", xticklabels=bin_labels, yticklabels=satellite_products, center=0, cbar_kws={"label": "Mean Difference [m]"})
 	plt.xlabel('OIB SIT bins [m]')
 	plt.show()
+ 
+def stat_matrics_all(data):
+	# Unpack
+	oib_sit = data['oib']
+	smos_sit = data['smos']
+	cryo_sit = data['uit'][2]  # Assuming the third element is the SIT data
+
+	# Flatten the list of arrays into a single array
+	oib = np.concatenate(oib_sit)
+	smos = np.concatenate(smos_sit)
+	cryo = np.concatenate(cryo_sit)
+
+	nan_mask = ~np.isnan(oib) & ~np.isnan(smos) & ~np.isnan(cryo)
+	oib, smos, cryo = [arr[nan_mask] for arr in (oib, smos, cryo)]
+ 
+	cryo_mask = (cryo >= 0) & (cryo <= 1.4)
+	cryo = cryo[cryo_mask]
+	oib_c = oib[cryo_mask]
+
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+ 
+	products = {'UiT': cryo, "SMOS": smos}
+	results = {p: {} for p in products}
+ 
+		# 4) Loop over bins
+	for i in range(len(bins)-1):
+		lo, hi = bins[i], bins[i+1]
+		label = labels[i]
+
+		# mask for this bin
+		bin_mask = (oib >= lo) & (oib < hi)
+		bin_mask_cryo = (oib_c >= lo) & (oib_c < hi)
+
+		if not np.any(bin_mask):
+			# fill NaNs if empty
+			for p in products:
+				results[p][label] = dict(
+					bias=np.nan, rmse=np.nan, cc=np.nan,
+					Nbias=np.nan, Nrmse=np.nan, Ncc=np.nan,
+					DISO=np.nan
+				)
+			continue
+
+		oib_bin = oib[bin_mask]
+		smos_bin = smos[bin_mask]
+		cryo_bin = cryo[bin_mask_cryo]
+		oib_cryo_bin = oib_c[bin_mask_cryo]
+
+		arrs = {
+			'UiT': cryo_bin,
+			'SMOS': smos_bin
+		}
+		oib_for_product = {
+			'UiT': oib_cryo_bin,
+			'SMOS': oib_bin
+		}
+  
+		raw = {}
+		for p, arr in arrs.items():
+			oib_ref = oib_for_product[p]
+			b = np.mean(arr - oib_ref)
+			r = np.sqrt(np.mean((arr - oib_ref)**2))
+			c = np.corrcoef(arr, oib_ref)[0,1]
+			raw[p] = dict(bias=b, rmse=r, cc=c)
+   
+		# normalize each metric across products in this bin
+		for metric in ('bias','rmse','cc'):
+			vals = np.array([ raw[p][metric] for p in products ])
+			mn, mx = vals.min(), vals.max()
+			span = (mx - mn) if mx!=mn else 1.0
+			for p in products:
+				raw[p]['N'+metric] = (raw[p][metric] - mn) / span
+
+		# compute DISO for each product
+		for p in products:
+			NB = raw[p]['Nbias']
+			NR = raw[p]['Nrmse']
+			NC = raw[p]['Ncc']
+			raw[p]['DISO'] = np.sqrt(NB**2 + NR**2 + (NC - 1.0)**2)
+			# store
+			results[p][label] = raw[p]
+   
+	for prod, bins in results.items():
+		print(f"\n{prod}:")
+		for bin_label, m in bins.items():
+			print(f"  {bin_label}: Bias={m['bias']:.3f}, RMSE={m['rmse']:.3f}, "
+				  f"CC={m['cc']:.3f}, DISO={m['DISO']:.3f}")
 	
-def stat_matrics(data):
+def stat_matrics_comp(data):
 	# Unpack
 	oib_sit = data['oib']
 	smos_sit = data['smos']
@@ -739,5 +827,6 @@ if __name__ == "__main__":
  
 	#bar_hist_plot(resampled_data)
 	#box_plot(resampled_data)
-	heat_map(resampled_data)
-	stat_matrics(resampled_data)
+	#heat_map(resampled_data)
+	stat_matrics_all(resampled_data)
+	stat_matrics_comp(resampled_data)
