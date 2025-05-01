@@ -523,7 +523,7 @@ def mooring_locations():
 def histogram_mooring():
 	print(monthly_stats_A.head())
 	plt.figure(figsize=(10, 6))
-	plt.hist(mooring_A_draft, bins=20, label='Mooring A SID', color='black', alpha=0.7, weights=np.ones_like(mooring_A_draft) / len(mooring_A_draft))
+	plt.hist(mooring_A_draft, bins=10, label='Mooring A SID', color='black', alpha=0.7, weights=np.ones_like(mooring_A_draft) / len(mooring_A_draft))
 	plt.axvspan(0, 1, color='red', alpha=0.3, label='Area of interest (0-1 m)')
 	plt.tick_params(axis='both', direction='in')
 	plt.xlabel('Sea Ice Draft [m]')
@@ -571,36 +571,36 @@ def times_series_all():
 	fig, ax = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
 	
 	# Plot for mooring A
-	ax[0].plot(msA_f["date"], msA_f["mean_draft"], marker="d",label="Mooring Ice Draft", color="black", zorder = 0)
-	ax[0].scatter(csA_f["date"], csA_f["mean_draft"], label="CS2 UiT Ice Draft", color="teal", zorder = 1)
-	ax[0].scatter(smA_f["date"], smA_f["mean_draft"], label="SMOS Ice Draft", color="salmon", zorder = 2)
-	ax[0].scatter(smA_f_suspicious["date"], smA_f_suspicious["mean_draft"], color="firebrick", label="Suspicious SMOS", zorder=3, marker="x")
+	ax[0].plot(msA_f["date"], msA_f["mean_draft"], marker="d",label="Mooring", color="black", zorder = 0)
+	ax[0].scatter(csA_f["date"], csA_f["mean_draft"], label="UiT", color="#4ca64c", zorder = 1)
+	ax[0].scatter(smA_f["date"], smA_f["mean_draft"], label="SMOS", color="#4c4cff", zorder = 2)
+	ax[0].scatter(smA_f_suspicious["date"], smA_f_suspicious["mean_draft"], color="#de0c62", label="Saturated SMOS", zorder=3, marker="x")
 	for date in msA_f["date"]:
 		ax[0].axvline(date, linestyle='--', color='gray', alpha=0.5, linewidth=1)
-	ax[0].set_ylabel("Draft (m)")
+	ax[0].set_ylabel("SID [m]")
 	ax[0].set_title("Mooring A")
 	ax[0].legend()
 	ax[0].grid(True)
 
 	# Plot for mooring B
 	ax[1].plot(msB_f["date"], msB_f["mean_draft"], marker="d", color="black", zorder = 0)
-	ax[1].scatter(csB_f["date"], csB_f["mean_draft"], color="teal", zorder = 1)
-	ax[1].scatter(smB_f["date"], smB_f["mean_draft"], color="salmon", zorder = 2)
-	ax[1].scatter(smB_f_suspicious["date"], smB_f_suspicious["mean_draft"], color="firebrick", label="Suspicious SMOS", zorder=3, marker="x")
+	ax[1].scatter(csB_f["date"], csB_f["mean_draft"], color="#4ca64c", zorder = 1)
+	ax[1].scatter(smB_f["date"], smB_f["mean_draft"], color="#4c4cff", zorder = 2)
+	ax[1].scatter(smB_f_suspicious["date"], smB_f_suspicious["mean_draft"], color="#59656d", label="Saturated SMOS", zorder=3, marker="x")
 	for date in msB_f["date"]:
 		ax[1].axvline(date, linestyle='--', color='gray', alpha=0.5, linewidth=1)
-	ax[1].set_ylabel("Draft (m)")
+	ax[1].set_ylabel("SID [m]")
 	ax[1].set_title("Mooring B")
 	ax[1].grid(True)
 
 	# Plot for mooring D
 	ax[2].plot(msD_f["date"], msD_f["mean_draft"], marker="d", color="black", zorder = 0)
-	ax[2].scatter(csD_f["date"], csD_f["mean_draft"], color="teal", zorder = 1)
-	ax[2].scatter(smD_f["date"], smD_f["mean_draft"], color="salmon", zorder = 2)
-	ax[2].scatter(smD_f_suspicious["date"], smD_f_suspicious["mean_draft"], color="firebrick", label="Suspicious SMOS", zorder=3, marker="x")
+	ax[2].scatter(csD_f["date"], csD_f["mean_draft"], color="#4ca64c", zorder = 1)
+	ax[2].scatter(smD_f["date"], smD_f["mean_draft"], color="#4c4cff", zorder = 2)
+	ax[2].scatter(smD_f_suspicious["date"], smD_f_suspicious["mean_draft"], color="red", label="Suspicious SMOS", zorder=3, marker="x")
 	for date in msD_f["date"]:
 		ax[2].axvline(date, linestyle='--', color='gray', alpha=0.5, linewidth=1)
-	ax[2].set_ylabel("Draft (m)")
+	ax[2].set_ylabel("SID [m]")
 	ax[2].set_xlabel("Date")
 	ax[2].set_title("Mooring D")
 	ax[2].grid(True)
@@ -952,8 +952,8 @@ def histogram():
  
 if __name__ == "__main__":
 	#mooring_locations()
-	histogram_mooring()
-	#times_series_all()
+	#histogram_mooring()
+	times_series_all()
 	#single_anomaly()
 	#draft_anomalies()
 	#histogram()
