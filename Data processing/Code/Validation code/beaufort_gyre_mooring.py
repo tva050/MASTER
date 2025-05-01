@@ -568,29 +568,47 @@ def times_series_all():
 	smD_f_suspicious = smD_f[smD_f["suspicious"] == 1]
  
 	# 3 subplots for each mooring
-	fig, ax = plt.subplots(3, 1, figsize=(12, 12), sharex=True)
+	fig, ax = plt.subplots(3, 1, figsize=(10, 6), sharex=True)
 	
 	# Plot for mooring A
 	ax[0].plot(msA_f["date"], msA_f["mean_draft"], marker="d",label="Mooring", color="black", zorder = 0)
 	ax[0].scatter(csA_f["date"], csA_f["mean_draft"], label="UiT", color="#4ca64c", zorder = 1)
 	ax[0].scatter(smA_f["date"], smA_f["mean_draft"], label="SMOS", color="#4c4cff", zorder = 2)
-	ax[0].scatter(smA_f_suspicious["date"], smA_f_suspicious["mean_draft"], color="#de0c62", label="Saturated SMOS", zorder=3, marker="x")
+	ax[0].scatter(smA_f_suspicious["date"], smA_f_suspicious["mean_draft"], color="red", label="Saturated SMOS", zorder=3, marker="x")
 	for date in msA_f["date"]:
 		ax[0].axvline(date, linestyle='--', color='gray', alpha=0.5, linewidth=1)
 	ax[0].set_ylabel("SID [m]")
 	ax[0].set_title("Mooring A")
-	ax[0].legend()
+ 
+	handles, labels = ax[0].get_legend_handles_labels()
+	left_handles = [handles[0], handles[1]]  # Mooring, UiT
+	right_handles = [handles[2], handles[3]]  # SMOS, Saturated SMOS
+	ax[0].legend(left_handles, ["Mooring", "UiT"],
+				 loc='lower left', bbox_to_anchor=(0.0, 1.02), frameon=False,
+				 ncol=2, borderaxespad=0.0, handletextpad=0.3)
+
+	# Place right-aligned legend
+	ax[0].legend(right_handles, ["SMOS", "Saturated SMOS"],
+				 loc='lower right', bbox_to_anchor=(1, 1.02), frameon=False,
+				 ncol=2, borderaxespad=0.0, handletextpad=0.3)
+
+	# Prevent legend overlap with each other
+	ax[0].add_artist(ax[0].legend(left_handles, ["Mooring", "UiT"], loc='lower left', bbox_to_anchor=(0.0, 1.02), frameon=False, ncol=2, borderaxespad=0.0, handletextpad=0.3))
+	ax[0].add_artist(ax[0].legend(right_handles, ["SMOS", "Saturated SMOS"], loc='lower right', bbox_to_anchor=(1, 1.02), frameon=False, ncol=2, borderaxespad=0.0, handletextpad=0.3))
+	ax[0].tick_params(axis='both', direction='in')
+ 
 	ax[0].grid(True)
 
 	# Plot for mooring B
 	ax[1].plot(msB_f["date"], msB_f["mean_draft"], marker="d", color="black", zorder = 0)
 	ax[1].scatter(csB_f["date"], csB_f["mean_draft"], color="#4ca64c", zorder = 1)
 	ax[1].scatter(smB_f["date"], smB_f["mean_draft"], color="#4c4cff", zorder = 2)
-	ax[1].scatter(smB_f_suspicious["date"], smB_f_suspicious["mean_draft"], color="#59656d", label="Saturated SMOS", zorder=3, marker="x")
+	ax[1].scatter(smB_f_suspicious["date"], smB_f_suspicious["mean_draft"], color="red", label="Saturated SMOS", zorder=3, marker="x")
 	for date in msB_f["date"]:
 		ax[1].axvline(date, linestyle='--', color='gray', alpha=0.5, linewidth=1)
 	ax[1].set_ylabel("SID [m]")
 	ax[1].set_title("Mooring B")
+	ax[1].tick_params(axis='both', direction='in')
 	ax[1].grid(True)
 
 	# Plot for mooring D
@@ -603,12 +621,74 @@ def times_series_all():
 	ax[2].set_ylabel("SID [m]")
 	ax[2].set_xlabel("Date")
 	ax[2].set_title("Mooring D")
+	ax[2].tick_params(axis='both', direction='in')
 	ax[2].grid(True)
 
 	# Improve layout
 	plt.tight_layout()
 	plt.show()
+ 
+ 
+def box_scatter():
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+ 
+	# stack the mooring data, to an single 
+	mooring_data = np.concatenate([mooring_A_draft, mooring_B_draft, mooring_D_draft])
+	cryosat_data = np.concatenate([cryosat_A_draft, cryosat_B_draft, cryosat_D_draft])
+	smos_data = np.concatenate([smos_A_draft, smos_B_draft, smos_D_draft])
+ 
+	nan_mask = ~np.isnan(mooring_data) & ~np.isnan(cryosat_data) & ~np.isnan(smos_data)
+	uls, cryo, smos = [arr[nan_mask] for arr in (mooring_data, cryosat_data, smos_data)]
+ 
+	binned_uls_cryo, binned_uls_smos = [], []
+	for i in range(len(bins) - 1):
+		bin_mask = (uls >= bins[i]) & (uls < bins[i + 1])
+		binned_uls_cryo.append(cryo[bin_mask])
+		binned_uls_smos.append(smos[bin_mask])
+  
+	fig = plt.figure(figsize=(10, 5))  # 10x10 figure size
+	box_width = 0.4
+	gap = (1 - 2 * box_width) / 3
 
+	ax1 = fig.add_axes([gap, 0.2, box_width, 0.6])
+	ax2 = fig.add_axes([2 * gap + box_width, 0.2, box_width, 0.6])
+
+	# Left box plot
+	ax1.boxplot(binned_uls_cryo, labels = bin_labels, medianprops=dict(color='black'), meanprops=dict(color="#f7022a"), showmeans=True, meanline=True, patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
+	ax1.plot([], [], "--", linewidth=1, color = "#f7022a", label = "Mean")
+	ax1.plot([], [], "-", linewidth=1, color = "black", label = "Median")
+ 
+	# scatter 
+	for i, data in enumerate(binned_uls_cryo):
+		x = np.random.normal(i + 1, 0.05, size=len(data))
+		ax1.scatter(x, data, color='green', alpha=0.7, edgecolor="none", linewidth=0.)
+	ax1.set_ylabel('UiT SID [m]')
+	ax1.set_xlabel('ULS SID bins [m]')
+	ax1.tick_params(axis='both', direction='in')
+	ax1.legend(frameon=False, loc='upper left', bbox_to_anchor=(0.0, 1.08), ncol=2, borderaxespad=0.0, handletextpad=0.3)
+	
+	
+	# Right box plot
+	#ax2.boxplot(binned_oib_smos_data, labels = bin_labels, medianprops=dict(color='black'), patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
+	ax2.boxplot(binned_uls_smos, labels = bin_labels, medianprops=dict(color='black'), showmeans=True, meanline=True, meanprops=dict(color="#f7022a"), patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
+	ax2.plot([], [], "--", linewidth=1, color = "#f7022a", label = "Mean")
+	ax2.plot([], [], "-", linewidth=1, color = "black", label = "Median")
+	for i, data in enumerate(binned_uls_smos):
+		x = np.random.normal(i + 1, 0.05, size=len(data))
+		ax2.scatter(x, data, color='blue', alpha=0.7, edgecolor="none", linewidth=0.)
+	ax2.set_ylabel('SMOS SID [m]')
+	ax2.set_xlabel('ULS SID bins [m]')
+	ax2.tick_params(axis='both', direction='in')
+	#ax2.legend(frameon=False, loc='upper left', bbox_to_anchor=(0.5, 1.08), ncol=2, borderaxespad=0.0, handletextpad=0.3)
+
+	# Add grid lines
+	ax1.grid(axis='y', linestyle='--', alpha=0.5)
+	ax2.grid(axis='y', linestyle='--', alpha=0.5)
+
+	plt.show()
+ 
+ 
 def statistics(x, y):
 	""" 
 	Perform linear regression and calculate statistics.
@@ -726,8 +806,7 @@ def single_anomaly():
 	plt.show()
  
 def valid_mask(mooring_anomalies, satellite_anomalies):
-	valid_mask = (mooring_anomalies >= 0) & (mooring_anomalies <= 1) & \
-			 	 (satellite_anomalies >= 0) & (satellite_anomalies <= 1)
+	valid_mask = (mooring_anomalies >= 0) & (mooring_anomalies <= 1) & (satellite_anomalies >= 0) & (satellite_anomalies <= 1)
 	#valid_mask_mooring = (mooring_anomalies >= 0) & (mooring_anomalies <= 1)
 	#valid_mask_satellite = (satellite_anomalies >= 0) & (satellite_anomalies <= 1)
 	mooring_anomalies = mooring_anomalies[valid_mask]
@@ -777,8 +856,9 @@ def plot_subplot(ax, x, y, reg_x, reg_y, stats, label, color, xlabel):
 
 	ax.set_xlabel(xlabel)
 	#ax.set_ylabel(f"{label} Anomalies (m)")
-	ax.legend()
+	#ax.legend()
 	ax.grid(True)
+	ax.tick_params(axis='both', direction='in')
 
 	# Add statistics text
 	n, bias, rmse, r, slope, intercept = stats[2:8]
@@ -790,6 +870,7 @@ def plot_subplot(ax, x, y, reg_x, reg_y, stats, label, color, xlabel):
 				  f"Intercept: {intercept:.2f}")
 	ax.text(0.95, 0.05, stats_text, transform=ax.transAxes, fontsize=10,
 			ha='right', va='bottom', bbox=dict(facecolor='gray', alpha=0.5))
+
 
 
 def compute_monthly_anomalies(draft_data, dates):
@@ -826,6 +907,177 @@ def compute_monthly_anomalies(draft_data, dates):
 	
 	return df["anomaly"].values
 
+def bar_hist_plot():
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	bin_labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+ 
+	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
+	mooring_B_draft_C, cryosat_B_draft_c = valid_mask(mooring_B_draft, cryosat_B_draft)
+	mooring_D_draft_C, cryosat_D_draft_c = valid_mask(mooring_D_draft, cryosat_D_draft)
+ 
+	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
+	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
+	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
+ 
+	mooring_c = np.concatenate([mooring_A_draft_C, mooring_B_draft_C, mooring_D_draft_C])
+	cryosat_c = np.concatenate([cryosat_A_draft_c, cryosat_B_draft_c, cryosat_D_draft_c])
+ 
+	mooring_s = np.concatenate([mooring_A_draft_S, mooring_B_draft_S, mooring_D_draft_S])
+	smos_s = np.concatenate([smos_A_draft_s, smos_B_draft_s, smos_D_draft_s])
+
+	nan_mask_c = ~np.isnan(mooring_c) & ~np.isnan(cryosat_c)
+	nan_mask_s = ~np.isnan(mooring_s) & ~np.isnan(smos_s)
+	mooring_c, cryosat_c = [arr[nan_mask_c] for arr in (mooring_c, cryosat_c)]
+	mooring_s, smos_s = [arr[nan_mask_s] for arr in (mooring_s, smos_s)]
+ 
+	smos_means = []
+	cryo_means = []
+	for i in range(len(bins)-1): #
+		bin_mask_c = (mooring_c >= bins[i]) & (mooring_c < bins[i + 1])
+		bin_mask_s = (mooring_s >= bins[i]) & (mooring_s < bins[i + 1])
+		binned_cryo = cryosat_c[bin_mask_c]
+		binned_smos = smos_s[bin_mask_s]
+		cryo_means.append(np.mean(binned_cryo))
+		smos_means.append(np.mean(binned_smos))
+  
+		# Set up the figure with one main plot and two smaller plots
+	fig = plt.figure(figsize=(10, 10))
+
+	# Layout parameters
+	box_size = 0.35
+	main_height = 0.5
+	gap = (1 - 2 * box_size) / 3
+	gap_main = (1 - main_height - box_size) / 3
+
+	# Create axes
+	ax_main = fig.add_axes([gap, 2 * gap_main + box_size, 1 - 2 * gap, main_height])
+	ax_left = fig.add_axes([gap, gap_main, box_size, box_size])
+	ax_right = fig.add_axes([2 * gap + box_size, gap_main, box_size, box_size])
+
+	# --- Main plot: Bar plot ---
+	x = np.arange(len(bin_labels))
+	width = 0.35  # width of the bars
+ 
+	ax_main.bar(x + width/2, cryo_means, width, label='UiT', color='green', alpha=0.7)
+	ax_main.bar(x - width/2, smos_means, width, label='SMOS', color='blue', alpha=0.7)
+	ax_main.set_ylabel('Mean SID [m]')
+	ax_main.set_xlabel('Mooring SID bins [m]')
+	ax_main.tick_params(axis='both', direction='in')
+	ax_main.set_xticks(x)
+	ax_main.set_xticklabels(bin_labels)
+	ax_main.legend(frameon=False)
+	ax_main.grid(axis='y', linestyle='--', alpha=0.5)
+ 
+	range_mask_c = (mooring_c >= 0) & (mooring_c <= 1)
+	range_mask_s = (mooring_s >= 0) & (mooring_s <= 1)
+	mooring_cm, cryosat_cm = mooring_c[range_mask_c], cryosat_c[range_mask_c]
+	mooring_sm, smos_sm = mooring_s[range_mask_s], smos_s[range_mask_s]
+	bin_edges=np.linspace(0,1,11)
+ 
+	# --- Bottom right plot: Histogram OIB vs Cryo ---
+	ax_right.hist(mooring_cm, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
+	ax_right.hist(cryosat_cm, bins=bin_edges, edgecolor='green', color="green", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='UiT', density=True)
+	ax_right.tick_params(axis='both', direction='in')
+	ax_right.set_xlabel('SID [m]')
+	ax_right.yaxis.set_major_formatter(PercentFormatter(1))
+	ax_right.grid(alpha=0.5, linestyle='--')
+	ax_right.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False) 
+	
+	# --- Bottom left plot: Histogram OIB vs SMOS ---
+	ax_left.hist(mooring_sm, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
+	ax_left.hist(smos_sm, bins=bin_edges, edgecolor='blue', color="blue", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='SMOS', density=True)
+	ax_left.set_xlabel('SID [m]')
+	ax_left.set_ylabel('Observations (%)')
+	ax_left.tick_params(axis='both', direction='in')
+	ax_left.yaxis.set_major_formatter(PercentFormatter(1))
+	ax_left.grid(alpha=0.5, linestyle='--')
+	ax_left.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False)
+
+	plt.show()
+
+	
+
+def scatter_plot():
+	# scatter plot with out calculating the anomalies
+	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
+	mooring_B_draft_C, cryosat_B_draft_c = valid_mask(mooring_B_draft, cryosat_B_draft)
+	mooring_D_draft_C, cryosat_D_draft_c = valid_mask(mooring_D_draft, cryosat_D_draft)
+ 
+	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
+	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
+	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
+ 
+	fig, ax = plt.subplots(2, 3, figsize=(10, 6), sharex=True)
+ 
+	# CryoSat-2
+	xA, yA, statsA = clean_and_stats(mooring_A_draft_C, cryosat_A_draft_c)
+	plot_subplot(ax[0, 0], xA, yA, statsA[0], statsA[1], statsA, "UiT", "#4ca64c", "")
+	ax[0, 0].set_ylabel("UiT SID [m]")
+	ax[0, 0].set_title("Mooring A")
+ 
+	xB, yB, statsB = clean_and_stats(mooring_B_draft_C, cryosat_B_draft_c)
+	plot_subplot(ax[0, 1], xB, yB, statsB[0], statsB[1], statsB, "UiT", "#4ca64c", "")
+	ax[0, 1].set_title("Mooring B")
+	
+	xD, yD, statsD = clean_and_stats(mooring_D_draft_C, cryosat_D_draft_c)
+	plot_subplot(ax[0, 2], xD, yD, statsD[0], statsD[1], statsD, "UIT", "#4ca64c", "")
+	ax[0, 2].set_title("Mooring D")
+ 
+	# SMOS
+	xA_smos, yA_smos, statsA_smos = clean_and_stats(mooring_A_draft_S, smos_A_draft_s)
+	plot_subplot(ax[1, 0], xA_smos, yA_smos, statsA_smos[0], statsA_smos[1], statsA_smos, "SMOS", "#4c4cff", "Mooring SID [m]")
+	ax[1, 0].set_ylabel("SMOS SID [m]")
+	#ax[1, 0].set_title("Mooring A vs SMOS")
+ 
+	xB_smos, yB_smos, statsB_smos = clean_and_stats(mooring_B_draft_S, smos_B_draft_s)
+	plot_subplot(ax[1, 1], xB_smos, yB_smos, statsB_smos[0], statsB_smos[1], statsB_smos, "SMOS", "#4c4cff", "Mooring SID [m]")
+	#ax[1, 1].set_title("Mooring B vs SMOS")
+ 
+	xD_smos, yD_smos, statsD_smos = clean_and_stats(mooring_D_draft_S, smos_D_draft_s)
+	plot_subplot(ax[1, 2], xD_smos, yD_smos, statsD_smos[0], statsD_smos[1], statsD_smos, "SMOS", "#4c4cff", "Mooring SID [m]")
+	#ax[1, 2].set_title("Mooring D vs SMOS")
+ 
+	plt.tight_layout()
+	plt.show()
+
+def total_scatter_plot():
+	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
+	mooring_B_draft_C, cryosat_B_draft_c = valid_mask(mooring_B_draft, cryosat_B_draft)
+	mooring_D_draft_C, cryosat_D_draft_c = valid_mask(mooring_D_draft, cryosat_D_draft)
+ 
+	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
+	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
+	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
+ 
+	mooring_draft_c = np.concatenate([mooring_A_draft_C, mooring_B_draft_C, mooring_D_draft_C])
+	cryosat_draft_c = np.concatenate([cryosat_A_draft_c, cryosat_B_draft_c, cryosat_D_draft_c])
+	mooring_draft_s = np.concatenate([mooring_A_draft_S, mooring_B_draft_S, mooring_D_draft_S])
+	smos_draft_s = np.concatenate([smos_A_draft_s, smos_B_draft_s, smos_D_draft_s])
+ 
+	fig = plt.figure(figsize=(10, 5))  # 10x10 figure size
+	box_width = 0.4
+	gap = (1 - 2 * box_width) / 3
+
+	ax1 = fig.add_axes([gap, 0.2, box_width, 0.6])
+	ax2 = fig.add_axes([2 * gap + box_width, 0.2, box_width, 0.6])
+ 
+	# Left box plot
+	x, y, stats = clean_and_stats(mooring_draft_c, cryosat_draft_c)
+	plot_subplot(ax1, x, y, stats[0], stats[1], stats, "UiT", "#4ca64c", "Mooring SID [m]")
+	ax1.set_ylabel("UiT SID [m]")
+	ax1.set_xlabel("Mooring SID [m]")
+ 
+	x_smos, y_smos, stats_smos = clean_and_stats(mooring_draft_s, smos_draft_s)
+	plot_subplot(ax2, x_smos, y_smos, stats_smos[0], stats_smos[1], stats_smos, "SMOS", "#4c4cff", "Mooring SID [m]")
+	ax2.set_ylabel("SMOS SID [m]")
+	ax2.set_xlabel("Mooring SID [m]")
+ 
+	plt.tight_layout()
+	plt.show()
+ 
+ 
+	
+
 def draft_anomalies():
 	# Calculate anomalies
 	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
@@ -855,39 +1107,88 @@ def draft_anomalies():
 	mooring_D_anom_s = compute_monthly_anomalies(mooring_D_draft_S, monthly_stats_D["date"])
 	smos_D_anom = compute_monthly_anomalies(smos_D_draft_s, smos_stats_D["date"])
 
-	fig, ax = plt.subplots(2, 3, figsize=(10, 10), sharex=True)
+	fig, ax = plt.subplots(2, 3, figsize=(10, 6), sharex=True)
 
 	# CryoSat-2
 	xA, yA, statsA = clean_and_stats(mooring_A_anom_c, cryosat_A_anom)
-	plot_subplot(ax[0, 0], xA, yA, statsA[0], statsA[1], statsA, "CryoSat-2", "black", "")
-	ax[0, 0].set_ylabel("CryoSat-2 Anomalies [m]")
-	ax[0, 0].set_title("BGEP Mooring A")
+	plot_subplot(ax[0, 0], xA, yA, statsA[0], statsA[1], statsA, "CryoSat-2", "#4ca64c", "")
+	ax[0, 0].set_ylabel("UiT SID Anomalies [m]")
+	ax[0, 0].set_title("Mooring A")
  
 	xB, yB, statsB = clean_and_stats(mooring_B_anom_c, cryosat_B_anom)
-	plot_subplot(ax[0, 1], xB, yB, statsB[0], statsB[1], statsB, "CryoSat-2", "black", "")
-	ax[0, 1].set_title("BGEP Mooring B")
+	plot_subplot(ax[0, 1], xB, yB, statsB[0], statsB[1], statsB, "CryoSat-2", "#4ca64c", "")
+	ax[0, 1].set_title("Mooring B")
 
 	xD, yD, statsD = clean_and_stats(mooring_D_anom_c, cryosat_D_anom)
-	plot_subplot(ax[0, 2], xD, yD, statsD[0], statsD[1], statsD, "CryoSat-2", "black", "")
-	ax[0, 2].set_title("BGEP Mooring D")
+	plot_subplot(ax[0, 2], xD, yD, statsD[0], statsD[1], statsD, "CryoSat-2", "#4ca64c", "")
+	ax[0, 2].set_title("Mooring D")
 
 	# SMOS
 	xA_smos, yA_smos, statsA_smos = clean_and_stats(mooring_A_anom_s, smos_A_anom)
-	plot_subplot(ax[1, 0], xA_smos, yA_smos, statsA_smos[0], statsA_smos[1], statsA_smos, "SMOS", "black", "Mooring Anomalies [m]")
-	ax[1, 0].set_ylabel("SMOS Anomalies [m]")
+	plot_subplot(ax[1, 0], xA_smos, yA_smos, statsA_smos[0], statsA_smos[1], statsA_smos, "SMOS", "#4c4cff", "Mooring SID Anomalies [m]")
+	ax[1, 0].set_ylabel("SMOS SID Anomalies [m]")
 	#ax[1, 0].set_title("Mooring A vs SMOS")
 
 	xB_smos, yB_smos, statsB_smos = clean_and_stats(mooring_B_anom_s, smos_B_anom)
-	plot_subplot(ax[1, 1], xB_smos, yB_smos, statsB_smos[0], statsB_smos[1], statsB_smos, "SMOS", "black", "Mooring Anomalies [m]")
+	plot_subplot(ax[1, 1], xB_smos, yB_smos, statsB_smos[0], statsB_smos[1], statsB_smos, "SMOS", "#4c4cff", "Mooring SID Anomalies [m]")
 	#ax[1, 1].set_title("Mooring B vs SMOS")
 
 	xD_smos, yD_smos, statsD_smos = clean_and_stats(mooring_D_anom_s, smos_D_anom)
-	plot_subplot(ax[1, 2], xD_smos, yD_smos, statsD_smos[0], statsD_smos[1], statsD_smos, "SMOS", "black", "Mooring Anomalies [m]")
+	plot_subplot(ax[1, 2], xD_smos, yD_smos, statsD_smos[0], statsD_smos[1], statsD_smos, "SMOS", "#4c4cff", "Mooring SID Anomalies [m]")
 	#ax[1, 2].set_title("Mooring D vs SMOS")
 
 	plt.tight_layout()
 	plt.show()
-	 
+	
+def total_draft_anomalies():
+	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
+	mooring_B_draft_C, cryosat_B_draft_c = valid_mask(mooring_B_draft, cryosat_B_draft)
+	mooring_D_draft_C, cryosat_D_draft_c = valid_mask(mooring_D_draft, cryosat_D_draft)
+ 
+	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
+	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
+	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
+ 
+	mooring_A_anom_c = compute_monthly_anomalies(mooring_A_draft_C, monthly_stats_A["date"])
+	cryosat_A_anom = compute_monthly_anomalies(cryosat_A_draft_c, cryosat_stats_A["date"])
+	mooring_B_anom_c = compute_monthly_anomalies(mooring_B_draft_C, monthly_stats_B["date"])
+	cryosat_B_anom = compute_monthly_anomalies(cryosat_B_draft_c, cryosat_stats_B["date"])
+	mooring_D_anom_c = compute_monthly_anomalies(mooring_D_draft_C, monthly_stats_D["date"])
+	cryosat_D_anom = compute_monthly_anomalies(cryosat_D_draft_c, cryosat_stats_D["date"])
+ 
+	mooring_A_anom_s = compute_monthly_anomalies(mooring_A_draft_S, monthly_stats_A["date"])
+	smos_A_anom = compute_monthly_anomalies(smos_A_draft_s, smos_stats_A["date"])
+	mooring_B_anom_s = compute_monthly_anomalies(mooring_B_draft_S, monthly_stats_B["date"])
+	smos_B_anom = compute_monthly_anomalies(smos_B_draft_s, smos_stats_B["date"])
+	mooring_D_anom_s = compute_monthly_anomalies(mooring_D_draft_S, monthly_stats_D["date"])
+	smos_D_anom = compute_monthly_anomalies(smos_D_draft_s, smos_stats_D["date"])
+ 
+	mooring_anom_c = np.concatenate([mooring_A_anom_c, mooring_B_anom_c, mooring_D_anom_c])
+	cryosat_anom = np.concatenate([cryosat_A_anom, cryosat_B_anom, cryosat_D_anom])
+ 
+	mooring_anom_s = np.concatenate([mooring_A_anom_s, mooring_B_anom_s, mooring_D_anom_s])
+	smos_anom = np.concatenate([smos_A_anom, smos_B_anom, smos_D_anom])
+ 
+	fig = plt.figure(figsize=(10, 5))  # 10x10 figure size
+	box_width = 0.4
+	gap = (1 - 2 * box_width) / 3
+
+	ax1 = fig.add_axes([gap, 0.2, box_width, 0.6])
+	ax2 = fig.add_axes([2 * gap + box_width, 0.2, box_width, 0.6])
+ 
+	# Left box plot
+	x, y, stats = clean_and_stats(mooring_anom_c, cryosat_anom)
+	plot_subplot(ax1, x, y, stats[0], stats[1], stats, "UiT", "#4ca64c", "Mooring SID Anomalies [m]")
+	ax1.set_ylabel("UiT SID Anomalies [m]")
+	ax1.set_xlabel("Mooring SID Anomalies [m]")
+ 
+	x_smos, y_smos, stats_smos = clean_and_stats(mooring_anom_s, smos_anom)
+	plot_subplot(ax2, x_smos, y_smos, stats_smos[0], stats_smos[1], stats_smos, "SMOS", "#4c4cff", "Mooring SID Anomalies [m]")
+	ax2.set_ylabel("SMOS SID Anomalies [m]")
+	ax2.set_xlabel("Mooring SID Anomalies [m]")
+ 
+	plt.tight_layout()
+	plt.show()
  
 def histogram():
 	""" 
@@ -947,13 +1248,255 @@ def histogram():
 	plt.tight_layout()
 	plt.show()
  
-	
+def full_stat_metric():
+	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
+	mooring_B_draft_C, cryosat_B_draft_c = valid_mask(mooring_B_draft, cryosat_B_draft)
+	mooring_D_draft_C, cryosat_D_draft_c = valid_mask(mooring_D_draft, cryosat_D_draft)
+ 
+	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
+	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
+	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
+ 
+	mooring_c = np.concatenate([mooring_A_draft_C, mooring_B_draft_C, mooring_D_draft_C])
+	cryosat_c = np.concatenate([cryosat_A_draft_c, cryosat_B_draft_c, cryosat_D_draft_c])
+ 
+	mooring_s = np.concatenate([mooring_A_draft_S, mooring_B_draft_S, mooring_D_draft_S])
+	smos_s = np.concatenate([smos_A_draft_s, smos_B_draft_s, smos_D_draft_s])
+
+	nan_mask_c = ~np.isnan(mooring_c) & ~np.isnan(cryosat_c)  
+	nan_mask_s = ~np.isnan(mooring_s) & ~np.isnan(smos_s)
+	mooring_c, cryosat_c = [arr[nan_mask_c] for arr in (mooring_c, cryosat_c)]
+	mooring_s, smos_s = [arr[nan_mask_s] for arr in (mooring_s, smos_s)]
+ 
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+ 
+	products = {'UiT': cryosat_c, "SMOS": smos_s}
+	results = {p: {} for p in products}
+ 
+	for i in range(len(bins)-1):
+		lo, hi = bins[i], bins[i+1]
+		label = labels[i]
+		bin_mask_c = (mooring_c >= lo) & (mooring_c < hi)
+		bin_mask_s = (mooring_s >= lo) & (mooring_s < hi)
+    
+		cryo_bin = cryosat_c[bin_mask_c]
+		smos_bin = smos_s[bin_mask_s]
+		mooring_c_bin = mooring_c[bin_mask_c]
+		mooring_s_bin = mooring_s[bin_mask_s]
+  
+		arrs = {
+			'UiT': cryo_bin,
+			'SMOS': smos_bin
+		}
+  
+		mooring_for_product = {
+			'UiT': mooring_c_bin,
+			'SMOS': mooring_s_bin
+		}
+  
+		raw = {}
+		for p, arr in products:
+			mooring_ref = mooring_for_product[p]
+			b = np.mean(arr - mooring_ref)
+			r = np.sqrt(np.mean((arr - mooring_ref)**2))
+			c = np.corrcoef(arr, mooring_ref)[0,1]
+			raw[p] = dict(bias=b, rmse=r, cc=c)
+
+		# normalize each metric across products in this bin
+		for metric in ('bias','rmse','cc'):
+			vals = np.array([ raw[p][metric] for p in products ])
+			mn, mx = vals.min(), vals.max()
+			span = (mx - mn) if mx!=mn else 1.0
+			for p in products:
+				raw[p]['N'+metric] = (raw[p][metric] - mn) / span
+
+		# compute DISO for each product
+		for p in products:
+			NB = raw[p]['Nbias']
+			NR = raw[p]['Nrmse']
+			NC = raw[p]['Ncc']
+			raw[p]['DISO'] = np.sqrt(NB**2 + NR**2 + (NC - 1.0)**2)
+			# store
+			results[p][label] = raw[p]
+   
+	for prod, bins in results.items():
+		print(f"\n{prod}:")
+		for bin_label, m in bins.items():
+			print(f"  {bin_label}: Bias={m['bias']:.3f}, RMSE={m['rmse']:.3f}, "
+				  f"CC={m['cc']:.3f}, DISO={m['DISO']:.3f}")
+  
+def full_stat_metric():
+	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
+	mooring_B_draft_C, cryosat_B_draft_c = valid_mask(mooring_B_draft, cryosat_B_draft)
+	mooring_D_draft_C, cryosat_D_draft_c = valid_mask(mooring_D_draft, cryosat_D_draft)
+ 
+	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
+	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
+	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
+ 
+	mooring_c = np.concatenate([mooring_A_draft_C, mooring_B_draft_C, mooring_D_draft_C])
+	cryosat_c = np.concatenate([cryosat_A_draft_c, cryosat_B_draft_c, cryosat_D_draft_c])
+ 
+	mooring_s = np.concatenate([mooring_A_draft_S, mooring_B_draft_S, mooring_D_draft_S])
+	smos_s = np.concatenate([smos_A_draft_s, smos_B_draft_s, smos_D_draft_s])
+
+	nan_mask_c = ~np.isnan(mooring_c) & ~np.isnan(cryosat_c)  
+	nan_mask_s = ~np.isnan(mooring_s) & ~np.isnan(smos_s)
+	mooring_c, cryosat_c = [arr[nan_mask_c] for arr in (mooring_c, cryosat_c)]
+	mooring_s, smos_s = [arr[nan_mask_s] for arr in (mooring_s, smos_s)]
+ 
+	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
+	labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
+ 
+	products = {'UiT': cryosat_c, "SMOS": smos_s}
+	results = {p: {} for p in products}
+ 
+	for i in range(len(bins)-1):
+		lo, hi = bins[i], bins[i+1]
+		label = labels[i]
+		bin_mask_c = (mooring_c >= lo) & (mooring_c < hi)
+		bin_mask_s = (mooring_s >= lo) & (mooring_s < hi)
+    
+		cryo_bin = cryosat_c[bin_mask_c]
+		smos_bin = smos_s[bin_mask_s]
+		mooring_c_bin = mooring_c[bin_mask_c]
+		mooring_s_bin = mooring_s[bin_mask_s]
+  
+		arrs = {
+			'UiT': cryo_bin,
+			'SMOS': smos_bin
+		}
+  
+		mooring_for_product = {
+			'UiT': mooring_c_bin,
+			'SMOS': mooring_s_bin
+		}
+  
+		raw = {}
+		for p, arr in products:
+			mooring_ref = mooring_for_product[p]
+			b = np.mean(arr - mooring_ref)
+			r = np.sqrt(np.mean((arr - mooring_ref)**2))
+			c = np.corrcoef(arr, mooring_ref)[0,1]
+			raw[p] = dict(bias=b, rmse=r, cc=c)
+
+		# normalize each metric across products in this bin
+		for metric in ('bias','rmse','cc'):
+			vals = np.array([ raw[p][metric] for p in products ])
+			mn, mx = vals.min(), vals.max()
+			span = (mx - mn) if mx!=mn else 1.0
+			for p in products:
+				raw[p]['N'+metric] = (raw[p][metric] - mn) / span
+
+		# compute DISO for each product
+		for p in products:
+			NB = raw[p]['Nbias']
+			NR = raw[p]['Nrmse']
+			NC = raw[p]['Ncc']
+			raw[p]['DISO'] = np.sqrt(NB**2 + NR**2 + (NC - 1.0)**2)
+			# store
+			results[p][label] = raw[p]
+   
+	for prod, bins in results.items():
+		print(f"\n{prod}:")
+		for bin_label, m in bins.items():
+			print(f"  {bin_label}: Bias={m['bias']:.3f}, RMSE={m['rmse']:.3f}, "
+				  f"CC={m['cc']:.3f}, DISO={m['DISO']:.3f}")
+   
+def comp_stat_metric():
+	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
+	mooring_B_draft_C, cryosat_B_draft_c = valid_mask(mooring_B_draft, cryosat_B_draft)
+	mooring_D_draft_C, cryosat_D_draft_c = valid_mask(mooring_D_draft, cryosat_D_draft)
+ 
+	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
+	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
+	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
+ 
+	mooring_c = np.concatenate([mooring_A_draft_C, mooring_B_draft_C, mooring_D_draft_C])
+	cryosat_c = np.concatenate([cryosat_A_draft_c, cryosat_B_draft_c, cryosat_D_draft_c])
+ 
+	mooring_s = np.concatenate([mooring_A_draft_S, mooring_B_draft_S, mooring_D_draft_S])
+	smos_s = np.concatenate([smos_A_draft_s, smos_B_draft_s, smos_D_draft_s])
+
+	nan_mask_c = ~np.isnan(mooring_c) & ~np.isnan(cryosat_c)  
+	nan_mask_s = ~np.isnan(mooring_s) & ~np.isnan(smos_s)
+	mooring_c, cryosat_c = [arr[nan_mask_c] for arr in (mooring_c, cryosat_c)]
+	mooring_s, smos_s = [arr[nan_mask_s] for arr in (mooring_s, smos_s)]
+ 
+	bins = [0, 0.4, 1]
+	labels = ['0-0.4', '0.4-1']
+ 
+	products = {'UiT': cryosat_c, "SMOS": smos_s}
+	results = {p: {} for p in products}
+ 
+	for i in range(len(bins)-1):
+		lo, hi = bins[i], bins[i+1]
+		label = labels[i]
+		bin_mask_c = (mooring_c >= lo) & (mooring_c < hi)
+		bin_mask_s = (mooring_s >= lo) & (mooring_s < hi)
+    
+		cryo_bin = cryosat_c[bin_mask_c]
+		smos_bin = smos_s[bin_mask_s]
+		mooring_c_bin = mooring_c[bin_mask_c]
+		mooring_s_bin = mooring_s[bin_mask_s]
+  
+		arrs = {
+			'UiT': cryo_bin,
+			'SMOS': smos_bin
+		}
+  
+		mooring_for_product = {
+			'UiT': mooring_c_bin,
+			'SMOS': mooring_s_bin
+		}
+  
+		raw = {}
+		for p, arr in products:
+			mooring_ref = mooring_for_product[p]
+			b = np.mean(arr - mooring_ref)
+			r = np.sqrt(np.mean((arr - mooring_ref)**2))
+			c = np.corrcoef(arr, mooring_ref)[0,1]
+			raw[p] = dict(bias=b, rmse=r, cc=c)
+
+		# normalize each metric across products in this bin
+		for metric in ('bias','rmse','cc'):
+			vals = np.array([ raw[p][metric] for p in products ])
+			mn, mx = vals.min(), vals.max()
+			span = (mx - mn) if mx!=mn else 1.0
+			for p in products:
+				raw[p]['N'+metric] = (raw[p][metric] - mn) / span
+
+		# compute DISO for each product
+		for p in products:
+			NB = raw[p]['Nbias']
+			NR = raw[p]['Nrmse']
+			NC = raw[p]['Ncc']
+			raw[p]['DISO'] = np.sqrt(NB**2 + NR**2 + (NC - 1.0)**2)
+			# store
+			results[p][label] = raw[p]
+   
+	for prod, bins in results.items():
+		print(f"\n{prod}:")
+		for bin_label, m in bins.items():
+			print(f"  {bin_label}: Bias={m['bias']:.3f}, RMSE={m['rmse']:.3f}, "
+				  f"CC={m['cc']:.3f}, DISO={m['DISO']:.3f}")
+
  
  
 if __name__ == "__main__":
 	#mooring_locations()
 	#histogram_mooring()
-	times_series_all()
+ 
+	
+	#times_series_all()
+	#bar_hist_plot()
+	#box_scatter()
+	#scatter_plot()
+	#total_scatter_plot()
+ 
 	#single_anomaly()
 	#draft_anomalies()
-	#histogram()
+	#total_draft_anomalies()
+	full_stat_metric()
+	comp_stat_metric()
