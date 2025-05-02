@@ -1374,7 +1374,7 @@ def full_stat_metric():
 		}
   
 		raw = {}
-		for p, arr in products:
+		for p, arr in arrs.items():
 			mooring_ref = mooring_for_product[p]
 			b = np.mean(arr - mooring_ref)
 			r = np.sqrt(np.mean((arr - mooring_ref)**2))
@@ -1452,7 +1452,7 @@ def comp_stat_metric():
 		}
   
 		raw = {}
-		for p, arr in products:
+		for p, arr in arrs.items():
 			mooring_ref = mooring_for_product[p]
 			b = np.mean(arr - mooring_ref)
 			r = np.sqrt(np.mean((arr - mooring_ref)**2))
