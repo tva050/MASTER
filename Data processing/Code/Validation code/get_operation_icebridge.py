@@ -459,17 +459,18 @@ def bar_hist_plot(data):
 	nan_mask = ~np.isnan(oib) & ~np.isnan(smos) & ~np.isnan(cryo)
 	oib, smos, cryo = [arr[nan_mask] for arr in (oib, smos, cryo)]
 
-	cryo_mask = (cryo >= 0) & (cryo <= 1.4)
-	cryo = cryo[cryo_mask]
-	oib_c = oib[cryo_mask]
+	pr_range_mask = (cryo >= 0) & (cryo <= 1) & (smos >= 0) & (smos <= 1)
+	cryo = cryo[pr_range_mask]
+	smos = smos[pr_range_mask]
+	oib = oib[pr_range_mask]
  
 	smos_means = []
 	cryo_means = []
 	for i in range(len(bins)-1): #
 		bin_mask = (oib >= bins[i]) & (oib < bins[i+1])
-		bin_mask_cryo = (oib_c >= bins[i]) & (oib_c < bins[i + 1])
+		#bin_mask_cryo = (oib_c >= bins[i]) & (oib_c < bins[i + 1])
 		smos_means.append(np.mean(smos[bin_mask])) 
-		cryo_means.append(np.mean(cryo[bin_mask_cryo]))
+		cryo_means.append(np.mean(cryo[bin_mask]))
 
 	# Set up the figure with one main plot and two smaller plots
 	fig = plt.figure(figsize=(10, 10))
@@ -501,13 +502,13 @@ def bar_hist_plot(data):
  
 	# histogram mask
 	range_mask = (oib >= 0) & (oib <= 1) 
-	range_mask_c = (oib_c >= 0) & (oib_c <= 1)
-	oib_m, smos_m, cryo_m = oib[range_mask], smos[range_mask], cryo[range_mask_c]
-	oib_m_c = oib_c[range_mask_c]
+	#range_mask_c = (oib_c >= 0) & (oib_c <= 1)
+	oib_m, smos_m, cryo_m = oib[range_mask], smos[range_mask], cryo[range_mask]
+	#oib_m_c = oib_c[range_mask_c]
 	bin_edges=np.linspace(0,1,11)
  
 	# --- Bottom right plot: Histogram OIB vs Cryo ---
-	ax_right.hist(oib_m_c, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
+	ax_right.hist(oib_m, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
 	ax_right.hist(cryo_m, bins=bin_edges, edgecolor='green', color="green", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='UiT', density=True)
 	ax_right.tick_params(axis='both', direction='in')
 	ax_right.set_xlabel('SIT [m]')
@@ -547,17 +548,16 @@ def box_plot(data):
 	nan_mask = ~np.isnan(oib) & ~np.isnan(smos) & ~np.isnan(cryo)
 	oib, smos, cryo = [arr[nan_mask] for arr in (oib, smos, cryo)]
 	
-	cryo_mask = (cryo >= 0) & (cryo <= 1.4)
-	cryo = cryo[cryo_mask]
-	oib_c = oib[cryo_mask]
+	pr_range_mask = (cryo >= 0) & (cryo <= 1) & (smos >= 0) & (smos <= 1)
+	cryo = cryo[pr_range_mask]
+	smos = smos[pr_range_mask]
+	oib = oib[pr_range_mask]
  
 	# Bin
 	binned_oib_cryo_data, binned_oib_smos_data = [], []
 	for i in range(len(bins) - 1):
 		bin_mask = (oib >= bins[i]) & (oib < bins[i + 1])
-		#bin_mask_smos = (oib_smos >= bins[i]) & (oib_smos < bins[i+1])
-		bin_mask_cryo = (oib_c >= bins[i]) & (oib_c < bins[i + 1])
-		binned_oib_cryo_data.append(cryo[bin_mask_cryo])
+		binned_oib_cryo_data.append(cryo[bin_mask])
 		binned_oib_smos_data.append(smos[bin_mask])
   
 	# --- Plot ---
@@ -620,15 +620,15 @@ def heat_map(data):
 	nan_mask = ~np.isnan(oib) & ~np.isnan(smos) & ~np.isnan(cryo)
 	oib, smos, cryo = [arr[nan_mask] for arr in (oib, smos, cryo)]
  
-	cryo_mask = (cryo >= 0) & (cryo <= 1.4)
-	cryo = cryo[cryo_mask]
-	oib_c = oib[cryo_mask]
+	pr_range_mask = (cryo >= 0) & (cryo <= 1) & (smos >= 0) & (smos <= 1)
+	cryo = cryo[pr_range_mask]
+	smos = smos[pr_range_mask]
+	oib = oib[pr_range_mask]
  
 	mean_difference = np.zeros((len(satellite_products), len(bins) - 1))
 	for i in range(len(bins) - 1):
 		bin_mask = (oib >= bins[i]) & (oib < bins[i + 1])
-		bin_mask_cryo = (oib_c >= bins[i]) & (oib_c < bins[i + 1])
-		mean_difference[0, i] = np.mean(cryo[bin_mask_cryo]) - np.mean(oib_c[bin_mask_cryo])
+		mean_difference[0, i] = np.mean(cryo[bin_mask]) - np.mean(oib[bin_mask])
 		mean_difference[1, i] = np.mean(smos[bin_mask]) - np.mean(oib[bin_mask])
   
 	plt.figure(figsize=(10,5))
@@ -650,9 +650,10 @@ def stat_matrics_all(data):
 	nan_mask = ~np.isnan(oib) & ~np.isnan(smos) & ~np.isnan(cryo)
 	oib, smos, cryo = [arr[nan_mask] for arr in (oib, smos, cryo)]
  
-	cryo_mask = (cryo >= 0) & (cryo <= 1.4)
-	cryo = cryo[cryo_mask]
-	oib_c = oib[cryo_mask]
+	pr_range_mask = (cryo >= 0) & (cryo <= 1) & (smos >= 0) & (smos <= 1)
+	cryo = cryo[pr_range_mask]
+	smos = smos[pr_range_mask]
+	oib = oib[pr_range_mask]
 
 	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
 	labels = ['0-0.2', '0.2-0.4', '0.4-0.6', '0.6-0.8', '0.8-1']
@@ -667,7 +668,7 @@ def stat_matrics_all(data):
 
 		# mask for this bin
 		bin_mask = (oib >= lo) & (oib < hi)
-		bin_mask_cryo = (oib_c >= lo) & (oib_c < hi)
+		#bin_mask_cryo = (oib_c >= lo) & (oib_c < hi)
 
 		if not np.any(bin_mask):
 			# fill NaNs if empty
@@ -681,15 +682,14 @@ def stat_matrics_all(data):
 
 		oib_bin = oib[bin_mask]
 		smos_bin = smos[bin_mask]
-		cryo_bin = cryo[bin_mask_cryo]
-		oib_cryo_bin = oib_c[bin_mask_cryo]
+		cryo_bin = cryo[bin_mask]
 
 		arrs = {
 			'UiT': cryo_bin,
 			'SMOS': smos_bin
 		}
 		oib_for_product = {
-			'UiT': oib_cryo_bin,
+			'UiT': oib_bin,
 			'SMOS': oib_bin
 		}
   
@@ -702,7 +702,7 @@ def stat_matrics_all(data):
 			raw[p] = dict(bias=b, rmse=r, cc=c)
    
 		# normalize each metric across products in this bin
-		for metric in ('bias','rmse','cc'):
+		for metric in ('bias','rmse'):
 			vals = np.array([ raw[p][metric] for p in products ])
 			mn, mx = vals.min(), vals.max()
 			span = (mx - mn) if mx!=mn else 1.0
@@ -713,7 +713,7 @@ def stat_matrics_all(data):
 		for p in products:
 			NB = raw[p]['Nbias']
 			NR = raw[p]['Nrmse']
-			NC = raw[p]['Ncc']
+			NC = raw[p]['cc']
 			raw[p]['DISO'] = np.sqrt(NB**2 + NR**2 + (NC - 1.0)**2)
 			# store
 			results[p][label] = raw[p]
@@ -738,12 +738,13 @@ def stat_matrics_comp(data):
 	nan_mask = ~np.isnan(oib) & ~np.isnan(smos) & ~np.isnan(cryo)
 	oib, smos, cryo = [arr[nan_mask] for arr in (oib, smos, cryo)]
  
-	cryo_mask = (cryo >= 0) & (cryo <= 1.4)
-	cryo = cryo[cryo_mask]
-	oib_c = oib[cryo_mask]
+	pr_range_mask = (cryo >= 0) & (cryo <= 1) & (smos >= 0) & (smos <= 1)
+	cryo = cryo[pr_range_mask]
+	smos = smos[pr_range_mask]
+	oib = oib[pr_range_mask]
 
-	bins = [0.0, 0.4, 1.0]
-	labels = ['0-0.4', '0.4-1.0']
+	bins = [0, 0.4, 1]
+	labels = ['0.0-0.4', '0.4-1']
  
 	products = {'UiT': cryo, "SMOS": smos}
 	results = {p: {} for p in products}
@@ -755,7 +756,7 @@ def stat_matrics_comp(data):
 
 		# mask for this bin
 		bin_mask = (oib >= lo) & (oib < hi)
-		bin_mask_cryo = (oib_c >= lo) & (oib_c < hi)
+		#bin_mask_cryo = (oib_c >= lo) & (oib_c < hi)
 
 		if not np.any(bin_mask):
 			# fill NaNs if empty
@@ -769,15 +770,14 @@ def stat_matrics_comp(data):
 
 		oib_bin = oib[bin_mask]
 		smos_bin = smos[bin_mask]
-		cryo_bin = cryo[bin_mask_cryo]
-		oib_cryo_bin = oib_c[bin_mask_cryo]
+		cryo_bin = cryo[bin_mask]
 
 		arrs = {
 			'UiT': cryo_bin,
 			'SMOS': smos_bin
 		}
 		oib_for_product = {
-			'UiT': oib_cryo_bin,
+			'UiT': oib_bin,
 			'SMOS': oib_bin
 		}
   
@@ -790,7 +790,7 @@ def stat_matrics_comp(data):
 			raw[p] = dict(bias=b, rmse=r, cc=c)
    
 		# normalize each metric across products in this bin
-		for metric in ('bias','rmse','cc'):
+		for metric in ('bias','rmse'):
 			vals = np.array([ raw[p][metric] for p in products ])
 			mn, mx = vals.min(), vals.max()
 			span = (mx - mn) if mx!=mn else 1.0
@@ -801,7 +801,7 @@ def stat_matrics_comp(data):
 		for p in products:
 			NB = raw[p]['Nbias']
 			NR = raw[p]['Nrmse']
-			NC = raw[p]['Ncc']
+			NC = raw[p]['cc']
 			raw[p]['DISO'] = np.sqrt(NB**2 + NR**2 + (NC - 1.0)**2)
 			# store
 			results[p][label] = raw[p]
@@ -811,7 +811,6 @@ def stat_matrics_comp(data):
 		for bin_label, m in bins.items():
 			print(f"  {bin_label}: Bias={m['bias']:.3f}, RMSE={m['rmse']:.3f}, "
 				  f"CC={m['cc']:.3f}, DISO={m['DISO']:.3f}")
-
 
 
 
@@ -828,5 +827,5 @@ if __name__ == "__main__":
 	#bar_hist_plot(resampled_data)
 	#box_plot(resampled_data)
 	#heat_map(resampled_data)
-	stat_matrics_all(resampled_data)
+	#stat_matrics_all(resampled_data)
 	stat_matrics_comp(resampled_data)
