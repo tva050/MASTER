@@ -1382,7 +1382,7 @@ def full_stat_metric():
 			raw[p] = dict(bias=b, rmse=r, cc=c)
 
 		# normalize each metric across products in this bin
-		for metric in ('bias','rmse','cc'):
+		for metric in ('bias','rmse'):
 			vals = np.array([ raw[p][metric] for p in products ])
 			mn, mx = vals.min(), vals.max()
 			span = (mx - mn) if mx!=mn else 1.0
@@ -1393,7 +1393,7 @@ def full_stat_metric():
 		for p in products:
 			NB = raw[p]['Nbias']
 			NR = raw[p]['Nrmse']
-			NC = raw[p]['Ncc']
+			NC = raw[p]['cc']
 			raw[p]['DISO'] = np.sqrt(NB**2 + NR**2 + (NC - 1.0)**2)
 			# store
 			results[p][label] = raw[p]
@@ -1460,7 +1460,7 @@ def comp_stat_metric():
 			raw[p] = dict(bias=b, rmse=r, cc=c)
 
 		# normalize each metric across products in this bin
-		for metric in ('bias','rmse','cc'):
+		for metric in ('bias','rmse'):
 			vals = np.array([ raw[p][metric] for p in products ])
 			mn, mx = vals.min(), vals.max()
 			span = (mx - mn) if mx!=mn else 1.0
@@ -1471,7 +1471,7 @@ def comp_stat_metric():
 		for p in products:
 			NB = raw[p]['Nbias']
 			NR = raw[p]['Nrmse']
-			NC = raw[p]['Ncc']
+			NC = raw[p]['cc']
 			raw[p]['DISO'] = np.sqrt(NB**2 + NR**2 + (NC - 1.0)**2)
 			# store
 			results[p][label] = raw[p]
