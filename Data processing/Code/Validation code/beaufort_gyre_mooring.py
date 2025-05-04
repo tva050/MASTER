@@ -432,7 +432,7 @@ def identify_cells_df(df, mooring_x, mooring_y, label, search_radius=RADIUS_RANG
 			stats["min_draft"] = np.min(sid_valid)
 			stats["max_draft"] = np.max(sid_valid)
 			
-   			# Suspicious if more than 25% of valid cells > 1m
+   			# suspicious if more than 40% of valid cells are > 1m
 			frac_above_1m = np.sum(sid_valid >= 1.0) / len(sid_valid)
 			if frac_above_1m > 0.40: #and np.mean(sid_valid) > 0.8
 				stats["suspicious"] = 1
@@ -1493,10 +1493,10 @@ if __name__ == "__main__":
 	#bar_hist_plot()
 	#box_scatter()
 	#scatter_plot()
-	#total_scatter_plot()
+	total_scatter_plot()
  
 	#single_anomaly()
 	#draft_anomalies()
 	#total_draft_anomalies()
-	full_stat_metric()
-	comp_stat_metric()
+	#full_stat_metric()
+	#comp_stat_metric()
