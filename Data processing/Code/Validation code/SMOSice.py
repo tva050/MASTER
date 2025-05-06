@@ -2,17 +2,14 @@ import os
 import glob
 import numpy as np
 import pandas as pd
-import scipy.io
-import xarray as xr
 import matplotlib.pyplot as plt
 import cartopy.crs as ccrs
-from scipy.spatial import cKDTree
-from sklearn.linear_model import LinearRegression
-import seaborn as sns
-from mpl_toolkits.basemap import Basemap
-import cartopy.crs as ccrs
 import cartopy.feature as cfeature
-from matplotlib.patches import Circle
+import netCDF4 as nc
+from matplotlib.cm import ScalarMappable
+from matplotlib.colors import Normalize
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+
 
 
 EM_bird_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOSice\EmBird"
@@ -105,21 +102,77 @@ def read_all_als_files(directory):
 	return pd.concat(all_data, ignore_index=True)
 
 
+def get_UiT(path):
+	data = nc.Dataset(path)
+	#print(data.variables.keys())
+	
+	lat = data.variables['latitude'][:]
+	lon = data.variables['longitude'][:]
+	sit = data.variables['sea_ice_thickness'][:]
+	sit_un = data.variables['sea_ice_thickness_uncertainty'][:]
+	ifb = data.variables['sea_ice_freeboard'][:]
+	
+	# Check if lat and lon are 1D and need reshaping
+	if lat.ndim == 1 and lon.ndim == 1:
+		lon, lat = np.meshgrid(lon, lat)
+		print('Reshaped lat and lon')
+	# Mask invalid data
+	mask = ~np.isnan(sit)
+	filtered_si_thickness = np.where(mask, sit, np.nan)
+	return lat, lon, filtered_si_thickness, sit_un, ifb
+
+def get_smos(path):
+	data = nc.Dataset(path)
+	#print(data.variables.keys())
+	lat = data.variables['latitude'][:]
+	lon = data.variables['longitude'][:]
+	sit = data.variables['mean_ice_thickness'][:]
+	sit_un = data.variables['uncertainty'][:]
+	sid = data.variables["sea_ice_draft"][:]
+ 
+	#mask = ~np.isnan(si_thickness_un)
+	#si_thickness_un = np.where(mask, si_thickness_un, np.nan)
+	
+	#print(si_thickness.shape)
+	return lat, lon, sit, sit_un, sid
+
+
 plt.rcParams.update({
 		'font.family':      'serif',
-		'font.size':         10,
-		'axes.labelsize':    10,
-		'xtick.labelsize':   8,
-		'ytick.labelsize':   8,
-		'legend.fontsize':   10,
-		'figure.titlesize':  10,
+		'font.size':         12,
+		'axes.labelsize':    12,
+		'xtick.labelsize':   11,
+		'ytick.labelsize':   11,
+		'legend.fontsize':   12,
+		'figure.titlesize':  12,
 }) 
  
-
-def plot_smosice_data(EM_bird_data, ALS_data, title="SMOSice Data"):
-	fig = plt.figure(figsize=(10, 10))
+ 
+def plot_EM_bird(EM_bird):
+	fig = plt.figure(figsize=(6.733, 5))
 	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
-	#ax.set_extent([10, 30, 75, 81], crs=ccrs.PlateCarree())
+	ax.set_extent([1.7e5, 7.45e5, -1.52e6, -8.39e5], ccrs.NorthPolarStereo())
+
+	ax.coastlines()
+	ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1, zorder=2)
+	ax.add_feature(cfeature.OCEAN, facecolor="lightgray", alpha=0.5, zorder=1)
+	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
+	ax.add_feature(cfeature.RIVERS, edgecolor='lightgray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=4)
+	ax.add_feature(cfeature.COASTLINE, color="black", linewidth=0.1, zorder=5)
+	ax.gridlines(draw_labels=True, color="dimgray", zorder=7)
+ 
+	unique_days_EM = EM_bird["DateTime"].dt.strftime('%Y-%m-%d').unique()
+	cmap_EM = plt.get_cmap("plasma", len(unique_days_EM))
+	for i, day in enumerate(unique_days_EM):
+		group = EM_bird[EM_bird["DateTime"].dt.strftime('%Y-%m-%d') == day]
+		ax.scatter(group["Longitude"], group["Latitude"], color=cmap_EM(i), s=1, transform=ccrs.PlateCarree(), label=day, zorder=6)
+  
+	plt.legend(markerscale=5, loc='lower left')
+	plt.show()
+
+def plot_als(als_data):
+	fig = plt.figure(figsize=(6.733, 5))
+	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
 	ax.set_extent([1.7e5, 7.45e5, -1.52e6, -8.39e5], ccrs.NorthPolarStereo())
 
 	ax.coastlines()
@@ -130,29 +183,147 @@ def plot_smosice_data(EM_bird_data, ALS_data, title="SMOSice Data"):
 	ax.add_feature(cfeature.COASTLINE, color="black", linewidth=0.1, zorder=5)
 	ax.gridlines(draw_labels=True, color="dimgray", zorder=7)
 
-	unique_days_EM = EM_bird_data["DateTime"].dt.strftime('%Y-%m-%d').unique()
-	cmap_EM = plt.get_cmap("plasma", len(unique_days_EM))
-	for i, day in enumerate(unique_days_EM):
-		group = EM_bird_data[EM_bird_data["DateTime"].dt.strftime('%Y-%m-%d') == day]
-		ax.scatter(
-			group["Longitude"], group["Latitude"],
-			color=cmap_EM(i), s=1, transform=ccrs.PlateCarree(),
-			label=day, zorder=6
-		)
+	unique_files = als_data["SourceFile"].unique()
+	cmap_ALS = plt.get_cmap("viridis", len(unique_files))
+	for i, file in enumerate(unique_files):
+		group = als_data[als_data["SourceFile"] == file]
+		ax.scatter(group["Longitude"], group["Latitude"], color=cmap_ALS(i), s=1, transform=ccrs.PlateCarree(), label=file.split(".")[0], zorder=6)
 
-	#unique_files = ALS_data["SourceFile"].unique()
-	#cmap_ALS = plt.get_cmap("viridis", len(unique_files))
-	#for i, file in enumerate(unique_files):
-	#	group = ALS_data[ALS_data["SourceFile"] == file]
-	#	ax.scatter(
-	#		group["Longitude"], group["Latitude"],
-	#		color=cmap_ALS(i), s=1, transform=ccrs.PlateCarree(), zorder=6)
-
-	#ax.scatter(EM_bird_data["Longitude"], EM_bird_data["Latitude"], color="blue", s=1, transform=ccrs.PlateCarree(), label="EM-Bird Data", zorder=6)
-	#ax.scatter(ALS_data["Longitude"], ALS_data["Latitude"], color="red", s=1, transform=ccrs.PlateCarree(), label="ALS Data", zorder=6)
-	#plt.legend(markerscale=5, loc='lower left')
+	plt.legend(markerscale=5, loc='lower left')
 	plt.show()
-	
+ 
+# ---------------------------- #
 em_bird_data = read_all_EMbird_files(EM_bird_path)
 als_data = read_all_als_files(ALS_path)
-plot_smosice_data(em_bird_data, als_data, title="SMOSice EM-Bird Data")
+
+bird_lat = em_bird_data["Latitude"].values
+bird_lon = em_bird_data["Longitude"].values
+bird_sit = em_bird_data["Total_Thickness"].values
+bird_sit_un = em_bird_data["Laser_Range"].values
+
+uit_lat, uit_lon, uit_sit, uit_sit_un, uit_ifb = get_UiT(uit_L3)
+smos_lat, smos_lon, smos_sit, smos_sit_un, smos_sid = get_smos(smos_L3)
+
+
+# ---------------------------- #
+	
+def plot_uit_EM_bird():
+	vmin, vmax = 0, 2.5
+	norm = Normalize(vmin=vmin, vmax=vmax)
+	cmap = plt.get_cmap("gnuplot2_r")
+	sm = ScalarMappable(norm=norm, cmap=cmap)
+	sm.set_array([])   # dummy
+	
+	fig = plt.figure(figsize=(6.733, 5))
+	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
+	ax.set_extent([4.7e5, 7.45e5, -1.35e6, -9.49e5], ccrs.NorthPolarStereo())
+
+	ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1, zorder=4)
+	ax.add_feature(cfeature.OCEAN, facecolor="lightgray", alpha=0.5, zorder=1)
+	ax.add_feature(cfeature.COASTLINE, color="black", linewidth=1, zorder=5)
+
+	mesh = ax.pcolormesh(uit_lon, uit_lat, uit_sit, norm=norm, cmap=cmap, transform=ccrs.PlateCarree(), zorder=2)
+	sc = ax.scatter(bird_lon, bird_lat, c=bird_sit, norm=norm, cmap=cmap, s=30, transform=ccrs.PlateCarree(), zorder=3)
+	
+	plt.colorbar(sm, ax=ax, label="Total SIT [m]")
+	plt.show()
+
+def plot_smos_EM_bird():
+	vmin, vmax = 0, 2.5
+	norm = Normalize(vmin=vmin, vmax=vmax)
+	cmap = plt.get_cmap("gnuplot2_r")
+	sm = ScalarMappable(norm=norm, cmap=cmap)
+	sm.set_array([])   # dummy
+	
+	fig = plt.figure(figsize=(6.733, 5))
+	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
+	ax.set_extent([4.7e5, 7.45e5, -1.35e6, -9.49e5], ccrs.NorthPolarStereo())
+
+	ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1, zorder=4)
+	ax.add_feature(cfeature.OCEAN, facecolor="lightgray", alpha=0.5, zorder=1)
+	ax.add_feature(cfeature.COASTLINE, color="black", linewidth=1, zorder=5)
+
+	mesh = ax.pcolormesh(smos_lon, smos_lat, smos_sit, norm=norm, cmap=cmap, transform=ccrs.PlateCarree(), zorder=2)
+	sc = ax.scatter(bird_lon, bird_lat, c=bird_sit, norm=norm, cmap=cmap, s=30, transform=ccrs.PlateCarree(), zorder=3)
+	
+	plt.colorbar(sm, ax=ax, label="SIT [m]")
+	plt.show()
+
+def map_smos_uit_bird():
+	# 1) Shared colormap & normalization
+	vmin, vmax = 0, 2.5
+	norm = Normalize(vmin=vmin, vmax=vmax)
+	cmap = plt.get_cmap("plasma")
+	sm = ScalarMappable(norm=norm, cmap=cmap)
+	sm.set_array([])  # dummy for colorbar
+
+	# 2) Make 1x2 subplot, both NorthPolarStereo
+	fig, axes = plt.subplots(
+		1, 2,
+		figsize=(6.733, 4.5),
+		subplot_kw={'projection': ccrs.NorthPolarStereo()}
+	)
+
+	# Common extent
+	extent = [4.7e5, 7.45e5, -1.35e6, -9.49e5]
+
+	for ax, lon, lat, sit, title in (
+		(axes[0], uit_lon,  uit_lat,  uit_sit,  "CryoSat UiT SIT"),
+		(axes[1], smos_lon, smos_lat, smos_sit, "SMOS SIT"),
+	):
+		ax.set_extent(extent, crs=ccrs.NorthPolarStereo())
+
+		ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1, zorder=4)
+		ax.add_feature(cfeature.OCEAN, facecolor="lightgray", alpha=0.5, zorder=1)
+		ax.add_feature(cfeature.COASTLINE, color="black", linewidth=1, zorder=5)
+
+		# data layers
+		ax.pcolormesh(
+			lon, lat, sit,
+			norm=norm, cmap=cmap,
+			transform=ccrs.PlateCarree(),
+			zorder=2
+		)
+		ax.scatter(
+			bird_lon, bird_lat, c=bird_sit,
+			norm=norm, cmap=cmap,
+			s=30, transform=ccrs.PlateCarree(),
+			zorder=3
+		)
+
+		#ax.set_title(title, pad=6)
+		ax.gridlines(draw_labels=False, linewidth=0.5, color="dimgray", zorder=6)
+
+	#fig.subplots_adjust(left=0.05, right=0.91, wspace=0.05)
+
+	# 4) Add a new axes for colorbar: [left, bottom, width, height]
+	#cax = fig.add_axes([0.85, 0.12, 0.02, 0.76])
+
+	# 5) Draw the colorbar into that axes
+	#cbar = fig.colorbar(sm, cax=cax, orientation='vertical')
+	#cbar.ax.yaxis.set_tick_params(direction='in')
+	#cbar.set_label("SIT [m]")
+	fig.subplots_adjust(left=0.02, right=0.91, wspace=0.02, bottom=0.08, top=0.95)
+	cbar = fig.colorbar(sm, ax=axes.ravel().tolist(), orientation='vertical', fraction=0.046, pad=0.01)
+	cbar.ax.yaxis.set_tick_params(direction='in')
+	cbar.set_label("Total SIT [m]")
+
+	plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\bird_cryo_smos.png", dpi=300, bbox_inches='tight')
+	plt.show()
+ 
+
+
+
+if __name__ == "__main__":
+	em_bird_data = read_all_EMbird_files(EM_bird_path)
+	als_data = read_all_als_files(ALS_path)
+ 
+	#uit_data = get_UiT(uit_L3)
+	#smos_data = get_smos(smos_L3)
+
+	#plot_EM_bird(em_bird_data)
+	#plot_als(als_data)
+ 
+	#plot_uit_EM_bird()
+	#plot_smos_EM_bird()
+	map_smos_uit_bird()
