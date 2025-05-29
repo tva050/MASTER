@@ -10,7 +10,7 @@ from netCDF4 import Dataset
 oct_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT product\uit_cryosat2_L3_EASE2_nh25km_2012_03_v3.nc"
 nov_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_11_v3.nc"
 dec_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\uit_cryosat2_L3_EASE2_nh25km_2023_12_v3.nc"
-
+uit_L2 = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\UiT L2 Trajectory\uit_cryosat2_L2_alongtrack_2014_03.txt"
 awi = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\CryoSat-2\AWI product\awi-siral-l3c-sithick-cryosat2-rep-nh_25km_ease2-202110-fv2p6.nc"
 
 def get_data(path):
@@ -164,7 +164,7 @@ def box_plot():
 
 if __name__ == "__main__":
     #lat, lon, si_thickness = get_data(oct_path)
-    print_nc_metadata(awi)
+    print_nc_metadata(uit_L2)
     #print(si_thickness)
     #write_to_txt(filtered_lat, filtered_lon, filtered_si_thickness)
     #single_figure(lat, lon, si_thickness)

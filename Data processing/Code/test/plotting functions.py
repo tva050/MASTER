@@ -53,7 +53,41 @@ def plot_1x2():
 	plt.show()
 
 
-#plot_2x2()
-plot_2()
-#plot_1x2()
+def plot_2x1():
+    fig = plt.figure(figsize=(6.733, 7))  # your fixed size
 
+    # Dimensions
+    bar_w, bar_h = 0.38, 0.22
+    hist_w, hist_h = 0.15, 0.12
+    mid_bar_w, mid_bar_h = 0.5, 0.22
+
+    # Top bar plots (left and right)
+    ax1 = fig.add_axes([0.08, 0.75, bar_w, bar_h])
+    ax2 = fig.add_axes([0.54, 0.75, bar_w, bar_h])
+
+    # Row of 4 histograms - centered horizontally
+    start_x_hist_row = 0.5 - (2 * hist_w + 1.5 * 0.04)  # total width: 4*hist + 3*gap
+    ax3 = fig.add_axes([start_x_hist_row + 0*(hist_w + 0.04), 0.57, hist_w, hist_h])
+    ax4 = fig.add_axes([start_x_hist_row + 1*(hist_w + 0.04), 0.57, hist_w, hist_h])
+    ax5 = fig.add_axes([start_x_hist_row + 2*(hist_w + 0.04), 0.57, hist_w, hist_h])
+    ax6 = fig.add_axes([start_x_hist_row + 3*(hist_w + 0.04), 0.57, hist_w, hist_h])
+
+    # Large middle bar plot
+    ax7 = fig.add_axes([0.25, 0.3, mid_bar_w, mid_bar_h])
+
+    # Bottom 2 histograms - centered
+    total_width_bottom = 2 * hist_w + 0.04
+    start_x_bottom = 0.5 - total_width_bottom / 2
+    ax8 = fig.add_axes([start_x_bottom, 0.12, hist_w, hist_h])
+    ax9 = fig.add_axes([start_x_bottom + hist_w + 0.04, 0.12, hist_w, hist_h])
+
+    # Optional: Titles
+    for i, ax in enumerate([ax1, ax2, ax3, ax4, ax5, ax6, ax7, ax8, ax9], start=1):
+        ax.set_title(f'Ax{i}', fontsize=8)
+
+    plt.show()
+
+#plot_2x2()
+#plot_2()
+#plot_1x2()
+plot_2x1()

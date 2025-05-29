@@ -471,21 +471,21 @@ smos_D_draft = smos_stats_D["mean_draft"]
 
 plt.rcParams.update({
 		'font.family':      'serif',
-		'font.size':         10,
-		'axes.labelsize':    10,
-		'xtick.labelsize':   8,
-		'ytick.labelsize':   8,
-		'legend.fontsize':   10,
-		'figure.titlesize':  10,
-}) 
+		'font.size':         12,
+		'axes.labelsize':    12,
+		'xtick.labelsize':   11,
+		'ytick.labelsize':   11,
+		'legend.fontsize':   12,
+		'figure.titlesize':  12,
+})
+
  
 
 def mooring_locations():
-	fig = plt.figure(figsize=(10, 10))
+	fig = plt.figure(figsize=(6.733, 4.5))
 	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
 	ax.set_extent([-3e6, 3e6, -3e6, 3e6], crs=ccrs.NorthPolarStereo())
  
-	ax.coastlines()
 	ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1, zorder=2)
 	ax.add_feature(cfeature.OCEAN, facecolor="lightgray", alpha=0.5, zorder=1)
 	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
@@ -503,12 +503,9 @@ def mooring_locations():
 			   s=30, marker='o', c='red', label='BGEP moorings',
 			   transform=ccrs.PlateCarree())
 
-	ax.text(MOORING_A_LON + 1, MOORING_A_LAT + 1, 'A', transform=ccrs.PlateCarree(),
-			fontsize=12, fontweight='bold', color='black')
-	ax.text(MOORING_B_LON + 1, MOORING_B_LAT + 1, 'B', transform=ccrs.PlateCarree(),
-			fontsize=12, fontweight='bold', color='black')
-	ax.text(MOORING_D_LON + 1, MOORING_D_LAT + 1, 'D', transform=ccrs.PlateCarree(),
-			fontsize=12, fontweight='bold', color='black')
+	ax.text(-6.824e5, 1.511e6, 'A', color='black')
+	ax.text(-5.208e5, 1.176e6, 'B', color='black')
+	ax.text(-1.48e6, 1.424e6, 'D', color='black')
 
 	theta = np.linspace(0, 2*np.pi, 100)
 	center, radius = [0.5, 0.5], 0.5
@@ -516,23 +513,25 @@ def mooring_locations():
 	circle = mpath.Path(verts * radius + center)
  
 	ax.set_boundary(circle, transform=ax.transAxes)
-	plt.legend()
-	plt.tight_layout()
-	plt.show()
+	plt.legend(loc="lower left", fontsize=11)
+	#plt.subplots_adjust(left=0.1, right=0.95, top=0.95, bottom=0.1)
+	plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Figures\BGEP validations - CryoSat and SMOS\mooring_locations.png", dpi=300, bbox_inches='tight')
+	#plt.show()
 
 def histogram_mooring():
-	print(monthly_stats_A.head())
-	plt.figure(figsize=(10, 6))
+	#print(monthly_stats_A.head())
+	plt.figure(figsize=(6.733, 3.5))
 	plt.hist(mooring_A_draft, bins=10, label='Mooring A SID', color='black', alpha=0.7, weights=np.ones_like(mooring_A_draft) / len(mooring_A_draft))
 	plt.axvspan(0, 1, color='red', alpha=0.3, label='Area of interest (0-1 m)')
 	plt.tick_params(axis='both', direction='in')
 	plt.xlabel('Sea Ice Draft [m]')
 	plt.gca().yaxis.set_major_formatter(PercentFormatter(1))
 	plt.ylabel('Observations (%)')
-	plt.title('Histogram of Mooring A Sea Ice Draft')
-	plt.legend()
+	plt.legend(loc='lower left', bbox_to_anchor=(0., 1.01, 1., .102), frameon=False, ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3)
 	plt.grid()
-	plt.show()
+	#plt.subplots_adjust(left=0.1, right=0.95, top=0.95, bottom=0.1)
+	plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Figures\BGEP validations - CryoSat and SMOS\Histogram_Mooring_A.png", dpi=300)
+	#plt.show()
 
 def mooring_draft_range(mooring_df, satellite_df):
 	mask = (mooring_df["mean_draft"] >= 0) & (mooring_df["mean_draft"] <= 1)
@@ -568,7 +567,7 @@ def times_series_all():
 	smD_f_suspicious = smD_f[smD_f["suspicious"] == 1]
  
 	# 3 subplots for each mooring
-	fig, ax = plt.subplots(3, 1, figsize=(10, 6), sharex=True)
+	fig, ax = plt.subplots(3, 1, figsize=(6.733, 4.7), sharex=True)
 	
 	# Plot for mooring A
 	ax[0].plot(msA_f["date"], msA_f["mean_draft"], marker="d",label="Mooring", color="black", zorder = 0)
@@ -584,17 +583,17 @@ def times_series_all():
 	left_handles = [handles[0], handles[1]]  # Mooring, UiT
 	right_handles = [handles[2], handles[3]]  # SMOS, Saturated SMOS
 	ax[0].legend(left_handles, ["Mooring", "UiT"],
-				 loc='lower left', bbox_to_anchor=(0.0, 1.02), frameon=False,
+				 loc='lower left', bbox_to_anchor=(0.0, 3), frameon=False,
 				 ncol=2, borderaxespad=0.0, handletextpad=0.3)
 
 	# Place right-aligned legend
 	ax[0].legend(right_handles, ["SMOS", "Saturated SMOS"],
-				 loc='lower right', bbox_to_anchor=(1, 1.02), frameon=False,
+				 loc='lower right', bbox_to_anchor=(1.0, 3), frameon=False,
 				 ncol=2, borderaxespad=0.0, handletextpad=0.3)
 
 	# Prevent legend overlap with each other
-	ax[0].add_artist(ax[0].legend(left_handles, ["Mooring", "UiT"], loc='lower left', bbox_to_anchor=(0.0, 1.02), frameon=False, ncol=2, borderaxespad=0.0, handletextpad=0.3))
-	ax[0].add_artist(ax[0].legend(right_handles, ["SMOS", "Saturated SMOS"], loc='lower right', bbox_to_anchor=(1, 1.02), frameon=False, ncol=2, borderaxespad=0.0, handletextpad=0.3))
+	ax[0].add_artist(ax[0].legend(left_handles, ["Mooring", "UiT"], loc='lower left', bbox_to_anchor=(0.0, 1.2), frameon=False, ncol=2, borderaxespad=0.0, handletextpad=0.3))
+	ax[0].add_artist(ax[0].legend(right_handles, ["SMOS", "Saturated SMOS"], loc='lower right', bbox_to_anchor=(1, 1.2), frameon=False, ncol=2, borderaxespad=0.0, handletextpad=0.3))
 	ax[0].tick_params(axis='both', direction='in')
  
 	ax[0].grid(True)
@@ -625,8 +624,9 @@ def times_series_all():
 	ax[2].grid(True)
 
 	# Improve layout
-	plt.tight_layout()
-	plt.show()
+	plt.subplots_adjust(left=0.079, right=0.999, top=0.9, bottom=0.084 , hspace=0.24) #0.084 bottom
+	plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Figures\BGEP validations - CryoSat and SMOS\TimeSerier_BGEP_SMOS_Cryo.png", dpi=300)
+	#plt.show()
  
  
 def box_scatter():
@@ -918,6 +918,11 @@ def bar_hist_plot():
 	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
 	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
 	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
+
+	#mooring_A_draft_C, mooring_B_draft_C, mooring_D_draft_C = mooring_A_draft, mooring_B_draft, mooring_D_draft
+	#cryosat_A_draft_c, cryosat_B_draft_c, cryosat_D_draft_c = cryosat_A_draft, cryosat_B_draft, cryosat_D_draft
+	#mooring_A_draft_S, mooring_B_draft_S, mooring_D_draft_S = mooring_A_draft, mooring_B_draft, mooring_D_draft
+	#smos_A_draft_s, smos_B_draft_s, smos_D_draft_s = smos_A_draft, smos_B_draft, smos_D_draft
  
 	mooring_c = np.concatenate([mooring_A_draft_C, mooring_B_draft_C, mooring_D_draft_C])
 	cryosat_c = np.concatenate([cryosat_A_draft_c, cryosat_B_draft_c, cryosat_D_draft_c])
@@ -932,6 +937,7 @@ def bar_hist_plot():
  
 	smos_means = []
 	cryo_means = []
+	mooring_means = []
 	for i in range(len(bins)-1): #
 		bin_mask_c = (mooring_c >= bins[i]) & (mooring_c < bins[i + 1])
 		bin_mask_s = (mooring_s >= bins[i]) & (mooring_s < bins[i + 1])
@@ -939,9 +945,11 @@ def bar_hist_plot():
 		binned_smos = smos_s[bin_mask_s]
 		cryo_means.append(np.mean(binned_cryo))
 		smos_means.append(np.mean(binned_smos))
+		bin_mask_moor = (mooring_c >= bins[i]) & (mooring_c < bins[i + 1])
+		mooring_means.append(np.mean(mooring_c[bin_mask_moor]) if bin_mask_moor.any() else np.nan)
   
 		# Set up the figure with one main plot and two smaller plots
-	fig = plt.figure(figsize=(10, 10))
+	fig = plt.figure(figsize=(6.733, 5.5))
 
 	# Layout parameters
 	box_size = 0.35
@@ -951,8 +959,8 @@ def bar_hist_plot():
 
 	# Create axes
 	ax_main = fig.add_axes([gap, 2 * gap_main + box_size, 1 - 2 * gap, main_height])
-	ax_left = fig.add_axes([gap, gap_main, box_size, box_size])
-	ax_right = fig.add_axes([2 * gap + box_size, gap_main, box_size, box_size])
+	ax_left = fig.add_axes([gap, gap_main-0.06, box_size, box_size])
+	ax_right = fig.add_axes([2 * gap + box_size, gap_main-0.06, box_size, box_size])
 
 	# --- Main plot: Bar plot ---
 	x = np.arange(len(bin_labels))
@@ -960,12 +968,15 @@ def bar_hist_plot():
  
 	ax_main.bar(x + width/2, cryo_means, width, label='UiT', color='green', alpha=0.7)
 	ax_main.bar(x - width/2, smos_means, width, label='SMOS', color='blue', alpha=0.7)
+	for i, mean_val in enumerate(mooring_means):
+		if not np.isnan(mean_val):
+			ax_main.hlines(mean_val, x[i] - width, x[i] + width, colors='black', linestyles='--', linewidth=1, label='Mooring' if i == 0 else None)
 	ax_main.set_ylabel('Mean SID [m]')
 	ax_main.set_xlabel('Mooring SID bins [m]')
 	ax_main.tick_params(axis='both', direction='in')
 	ax_main.set_xticks(x)
 	ax_main.set_xticklabels(bin_labels)
-	ax_main.legend(frameon=False)
+	ax_main.legend(bbox_to_anchor=(0.65, 1.1), loc='upper right', ncol=3, borderaxespad=0.0, handletextpad=0.3, frameon=False)
 	ax_main.grid(axis='y', linestyle='--', alpha=0.5)
  
 	range_mask_c = (mooring_c >= 0) & (mooring_c <= 1)
@@ -975,25 +986,27 @@ def bar_hist_plot():
 	bin_edges=np.linspace(0,1,11)
  
 	# --- Bottom right plot: Histogram OIB vs Cryo ---
-	ax_right.hist(mooring_cm, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
+	ax_right.hist(mooring_cm, bins=bin_edges, alpha=0.7, label='Mooring', color='black', density=True)
 	ax_right.hist(cryosat_cm, bins=bin_edges, edgecolor='green', color="green", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='UiT', density=True)
 	ax_right.tick_params(axis='both', direction='in')
 	ax_right.set_xlabel('SID [m]')
 	ax_right.yaxis.set_major_formatter(PercentFormatter(1))
 	ax_right.grid(alpha=0.5, linestyle='--')
-	ax_right.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False) 
+	ax_right.legend(loc='upper center', bbox_to_anchor=(0.5, 1.13), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False) 
 	
 	# --- Bottom left plot: Histogram OIB vs SMOS ---
-	ax_left.hist(mooring_sm, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
+	ax_left.hist(mooring_sm, bins=bin_edges, alpha=0.7, label='Mooring', color='black', density=True)
 	ax_left.hist(smos_sm, bins=bin_edges, edgecolor='blue', color="blue", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='SMOS', density=True)
 	ax_left.set_xlabel('SID [m]')
 	ax_left.set_ylabel('Observations (%)')
 	ax_left.tick_params(axis='both', direction='in')
 	ax_left.yaxis.set_major_formatter(PercentFormatter(1))
 	ax_left.grid(alpha=0.5, linestyle='--')
-	ax_left.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False)
+	ax_left.legend(loc='upper center', bbox_to_anchor=(0.5, 1.13), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False)
 
-	plt.show()
+
+	plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Figures\BGEP validations - CryoSat and SMOS\BarHist_all_filtered.png", dpi=300, bbox_inches='tight')
+	#plt.show()
 
 	
 
@@ -1044,36 +1057,34 @@ def total_scatter_plot():
 	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
 	mooring_B_draft_C, cryosat_B_draft_c = valid_mask(mooring_B_draft, cryosat_B_draft)
 	mooring_D_draft_C, cryosat_D_draft_c = valid_mask(mooring_D_draft, cryosat_D_draft)
- 
+
 	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
 	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
 	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
- 
+
 	mooring_draft_c = np.concatenate([mooring_A_draft_C, mooring_B_draft_C, mooring_D_draft_C])
 	cryosat_draft_c = np.concatenate([cryosat_A_draft_c, cryosat_B_draft_c, cryosat_D_draft_c])
 	mooring_draft_s = np.concatenate([mooring_A_draft_S, mooring_B_draft_S, mooring_D_draft_S])
 	smos_draft_s = np.concatenate([smos_A_draft_s, smos_B_draft_s, smos_D_draft_s])
- 
-	fig = plt.figure(figsize=(10, 5))  # 10x10 figure size
-	box_width = 0.4
-	gap = (1 - 2 * box_width) / 3
 
-	ax1 = fig.add_axes([gap, 0.2, box_width, 0.6])
-	ax2 = fig.add_axes([2 * gap + box_width, 0.2, box_width, 0.6])
- 
-	# Left box plot
+	# Use subplots instead of add_axes
+	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6.733, 3.5))
+
+	# Left subplot: UiT
 	x, y, stats = clean_and_stats(mooring_draft_c, cryosat_draft_c)
 	plot_subplot(ax1, x, y, stats[0], stats[1], stats, "UiT", "#4ca64c", "Mooring SID [m]")
 	ax1.set_ylabel("UiT SID [m]")
 	ax1.set_xlabel("Mooring SID [m]")
- 
+
+	# Right subplot: SMOS
 	x_smos, y_smos, stats_smos = clean_and_stats(mooring_draft_s, smos_draft_s)
 	plot_subplot(ax2, x_smos, y_smos, stats_smos[0], stats_smos[1], stats_smos, "SMOS", "#4c4cff", "Mooring SID [m]")
 	ax2.set_ylabel("SMOS SID [m]")
 	ax2.set_xlabel("Mooring SID [m]")
- 
-	plt.tight_layout()
-	plt.show()
+
+	plt.subplots_adjust(left=0.08, right=0.996, top=0.842, bottom=0.11 , wspace=0.2) 
+	plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Figures\BGEP validations - CryoSat and SMOS\PairScatter_allULS_raw.png", dpi=300, bbox_inches='tight')
+	#plt.show()
  
  
 	
@@ -1144,51 +1155,49 @@ def total_draft_anomalies():
 	mooring_A_draft_C, cryosat_A_draft_c = valid_mask(mooring_A_draft, cryosat_A_draft)
 	mooring_B_draft_C, cryosat_B_draft_c = valid_mask(mooring_B_draft, cryosat_B_draft)
 	mooring_D_draft_C, cryosat_D_draft_c = valid_mask(mooring_D_draft, cryosat_D_draft)
- 
+
 	mooring_A_draft_S, smos_A_draft_s = valid_mask(mooring_A_draft, smos_A_draft)
 	mooring_B_draft_S, smos_B_draft_s = valid_mask(mooring_B_draft, smos_B_draft)
 	mooring_D_draft_S, smos_D_draft_s = valid_mask(mooring_D_draft, smos_D_draft)
- 
+
 	mooring_A_anom_c = compute_monthly_anomalies(mooring_A_draft_C, monthly_stats_A["date"])
 	cryosat_A_anom = compute_monthly_anomalies(cryosat_A_draft_c, cryosat_stats_A["date"])
 	mooring_B_anom_c = compute_monthly_anomalies(mooring_B_draft_C, monthly_stats_B["date"])
 	cryosat_B_anom = compute_monthly_anomalies(cryosat_B_draft_c, cryosat_stats_B["date"])
 	mooring_D_anom_c = compute_monthly_anomalies(mooring_D_draft_C, monthly_stats_D["date"])
 	cryosat_D_anom = compute_monthly_anomalies(cryosat_D_draft_c, cryosat_stats_D["date"])
- 
+
 	mooring_A_anom_s = compute_monthly_anomalies(mooring_A_draft_S, monthly_stats_A["date"])
 	smos_A_anom = compute_monthly_anomalies(smos_A_draft_s, smos_stats_A["date"])
 	mooring_B_anom_s = compute_monthly_anomalies(mooring_B_draft_S, monthly_stats_B["date"])
 	smos_B_anom = compute_monthly_anomalies(smos_B_draft_s, smos_stats_B["date"])
 	mooring_D_anom_s = compute_monthly_anomalies(mooring_D_draft_S, monthly_stats_D["date"])
 	smos_D_anom = compute_monthly_anomalies(smos_D_draft_s, smos_stats_D["date"])
- 
+
 	mooring_anom_c = np.concatenate([mooring_A_anom_c, mooring_B_anom_c, mooring_D_anom_c])
 	cryosat_anom = np.concatenate([cryosat_A_anom, cryosat_B_anom, cryosat_D_anom])
- 
+
 	mooring_anom_s = np.concatenate([mooring_A_anom_s, mooring_B_anom_s, mooring_D_anom_s])
 	smos_anom = np.concatenate([smos_A_anom, smos_B_anom, smos_D_anom])
- 
-	fig = plt.figure(figsize=(10, 5))  # 10x10 figure size
-	box_width = 0.4
-	gap = (1 - 2 * box_width) / 3
 
-	ax1 = fig.add_axes([gap, 0.2, box_width, 0.6])
-	ax2 = fig.add_axes([2 * gap + box_width, 0.2, box_width, 0.6])
- 
-	# Left box plot
+	# Create 1x2 subplots
+	fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6.733, 3.5))
+
+	# Plot CryoSat anomalies
 	x, y, stats = clean_and_stats(mooring_anom_c, cryosat_anom)
 	plot_subplot(ax1, x, y, stats[0], stats[1], stats, "UiT", "#4ca64c", "Mooring SID Anomalies [m]")
 	ax1.set_ylabel("UiT SID Anomalies [m]")
 	ax1.set_xlabel("Mooring SID Anomalies [m]")
- 
+
+	# Plot SMOS anomalies
 	x_smos, y_smos, stats_smos = clean_and_stats(mooring_anom_s, smos_anom)
 	plot_subplot(ax2, x_smos, y_smos, stats_smos[0], stats_smos[1], stats_smos, "SMOS", "#4c4cff", "Mooring SID Anomalies [m]")
 	ax2.set_ylabel("SMOS SID Anomalies [m]")
 	ax2.set_xlabel("Mooring SID Anomalies [m]")
- 
-	plt.tight_layout()
-	plt.show()
+
+	plt.subplots_adjust(left=0.095, right=0.996, top=0.842, bottom=0.11 , wspace=0.262) 
+	plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Figures\BGEP validations - CryoSat and SMOS\PairScatter_allULS_seasonal_anomalies.png", dpi=300, bbox_inches='tight')
+	#plt.show()
  
 def histogram():
 	""" 
@@ -1488,12 +1497,11 @@ if __name__ == "__main__":
 	#mooring_locations()
 	#histogram_mooring()
  
-	
 	#times_series_all()
-	#bar_hist_plot()
+	bar_hist_plot()
 	#box_scatter()
 	#scatter_plot()
-	total_scatter_plot()
+	#total_scatter_plot()
  
 	#single_anomaly()
 	#draft_anomalies()

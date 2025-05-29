@@ -133,7 +133,7 @@ def store_to_file(lon, lat, si_thickness, si_thickness_unc, output_file):
 
 if __name__ == "__main__":
     print_nc_metadata(one_smos_file)
-    lat, lon, monthly_mean_thickness, monthly_mean_thickness_unc = get_data(folder_path_2013)
+    #lat, lon, monthly_mean_thickness, monthly_mean_thickness_unc = get_data(folder_path_2013)
     # print number of nan values in monthly_mean_thickness_unc
     #print(np.sum(np.isnan(monthly_mean_thickness_unc)))
     #plot_data(lon, lat, monthly_mean_thickness)

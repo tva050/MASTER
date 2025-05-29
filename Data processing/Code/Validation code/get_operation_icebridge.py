@@ -304,13 +304,13 @@ def resample_all_data(data, radius=12500):
  
 plt.rcParams.update({
 		'font.family':      'serif',
-		'font.size':         10,
-		'axes.labelsize':    10,
-		'xtick.labelsize':   8,
-		'ytick.labelsize':   8,
-		'legend.fontsize':   10,
-		'figure.titlesize':  10,
-}) 
+		'font.size':         12,
+		'axes.labelsize':    12,
+		'xtick.labelsize':   11,
+		'ytick.labelsize':   11,
+		'legend.fontsize':   12,
+		'figure.titlesize':  12,
+})
  
 def plot_flight_paths_all(data):
 	"""
@@ -329,7 +329,7 @@ def plot_flight_paths_all(data):
 	all_lats = np.concatenate(oib_lats)
 	all_lons = np.concatenate(oib_lons)
 
-	fig = plt.figure(figsize=(10,10))
+	fig = plt.figure(figsize=(6.733, 4.5))
 	ax  = fig.add_subplot(1,1,1, projection=ccrs.NorthPolarStereo())
 	ax.set_extent([-3e6, 3e6, -3e6, 3e6], ccrs.NorthPolarStereo())
 
@@ -359,7 +359,8 @@ def plot_flight_paths_all(data):
 	circle = mpath.Path(verts * 0.5 + 0.5)  # radius=0.5, center=(0.5,0.5)
 	ax.set_boundary(circle, transform=ax.transAxes)
 
-	plt.legend(markerscale=5, fontsize='small', loc='lower left')
+	plt.legend(markerscale=5, loc='lower left', ncols = 2, fontsize=10, handletextpad=0.3, bbox_to_anchor=(0., 1.0), borderaxespad=0.0)
+	#plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Figures\OIB validations - CryoSat and SMOS\OIB_all_flight_paths.png", dpi=300, bbox_inches='tight')
 	plt.show()
 
 
@@ -378,7 +379,7 @@ def histogram_oib(data):
 	
 
 	# Create histogram
-	plt.figure(figsize=(10, 6))
+	plt.figure(figsize=(6.733, 3.5))
 	plt.hist(all_sit, bins=50, label='OIB SIT', color='black', alpha=0.7, weights=np.ones_like(all_sit) / len(all_sit))
 	plt.axvspan(0, 1, color='red', alpha=0.3, label='Area of interest (0-1 m)')
 	#plt.axvline(x=1, color='red', linestyle='--', alpha=0.5)
@@ -388,10 +389,10 @@ def histogram_oib(data):
 	plt.xlabel('Sea Ice Thickness (m)')
 	plt.gca().yaxis.set_major_formatter(PercentFormatter(1))
 	plt.ylabel('Observations (%)')
-	plt.title('Histogram of OIB Sea Ice Thickness')
-	plt.legend()
+	plt.legend(loc='lower left', bbox_to_anchor=(0., 1.01, 1., .102), frameon=False, ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3)
 	plt.grid()
-	plt.show()
+	plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Figures\OIB validations - CryoSat and SMOS\OIB_SIT_histogram.png", dpi=300)
+	#plt.show()
  
 
  
@@ -463,7 +464,7 @@ def bar_hist_plot(data):
 	cryo = cryo[pr_range_mask]
 	smos = smos[pr_range_mask]
 	oib = oib[pr_range_mask]
- 
+	print(f"Number of valid data points: {len(oib)}")
 	smos_means = []
 	cryo_means = []
 	for i in range(len(bins)-1): #
@@ -473,7 +474,7 @@ def bar_hist_plot(data):
 		cryo_means.append(np.mean(cryo[bin_mask]))
 
 	# Set up the figure with one main plot and two smaller plots
-	fig = plt.figure(figsize=(10, 10))
+	fig = plt.figure(figsize=(6.733, 6))
 
 	# Layout parameters
 	box_size = 0.35
@@ -483,8 +484,8 @@ def bar_hist_plot(data):
 
 	# Create axes
 	ax_main = fig.add_axes([gap, 2 * gap_main + box_size, 1 - 2 * gap, main_height])
-	ax_left = fig.add_axes([gap, gap_main, box_size, box_size])
-	ax_right = fig.add_axes([2 * gap + box_size, gap_main, box_size, box_size])
+	ax_left = fig.add_axes([gap, gap_main-0.06, box_size, box_size-0.001])
+	ax_right = fig.add_axes([2 * gap + box_size, gap_main-0.06, box_size, box_size-0.001])
 
 	# --- Main plot: Bar plot ---
 	x = np.arange(len(bin_labels))
@@ -497,7 +498,7 @@ def bar_hist_plot(data):
 	ax_main.tick_params(axis='both', direction='in')
 	ax_main.set_xticks(x)
 	ax_main.set_xticklabels(bin_labels)
-	ax_main.legend(frameon=False)
+	ax_main.legend(bbox_to_anchor=(0.4, 1.1), loc='upper right', ncol=2, borderaxespad=0.0, handletextpad=0.3, frameon=False)
 	ax_main.grid(axis='y', linestyle='--', alpha=0.5)
  
 	# histogram mask
@@ -512,21 +513,22 @@ def bar_hist_plot(data):
 	ax_right.hist(cryo_m, bins=bin_edges, edgecolor='green', color="green", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='UiT', density=True)
 	ax_right.tick_params(axis='both', direction='in')
 	ax_right.set_xlabel('SIT [m]')
-	ax_right.set_ylabel('Counts')
 	ax_right.yaxis.set_major_formatter(PercentFormatter(1))
 	ax_right.grid(alpha=0.5, linestyle='--')
-	ax_right.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False) 
+	ax_right.legend(loc='upper center', bbox_to_anchor=(0.5, 1.13), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False) 
 	
 	# --- Bottom left plot: Histogram OIB vs SMOS ---
 	ax_left.hist(oib_m, bins=bin_edges, alpha=0.7, label='OIB', color='black', density=True)
 	ax_left.hist(smos_m, bins=bin_edges, edgecolor='blue', color="blue", fill=True, linewidth=1, hatch='xx', alpha=0.7, label='SMOS', density=True)
 	ax_left.set_xlabel('SIT [m]')
+	ax_left.set_ylabel('Counts')
 	ax_left.tick_params(axis='both', direction='in')
 	ax_left.yaxis.set_major_formatter(PercentFormatter(1))
 	ax_left.grid(alpha=0.5, linestyle='--')
-	ax_left.legend(loc='upper center', bbox_to_anchor=(0.5, 1.08), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False)
+	ax_left.legend(loc='upper center', bbox_to_anchor=(0.5, 1.13), ncol=2, mode="expand", borderaxespad=0.0, handletextpad=0.3, frameon=False)
 
-	plt.show()
+	plt.savefig(r'C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Figures\OIB validations - CryoSat and SMOS\OIB_bar_histo_plot_with_cryo_mask.png', dpi=300, bbox_inches='tight')
+	#plt.show()
 	
 	
 def box_plot(data):
@@ -537,70 +539,72 @@ def box_plot(data):
 	oib_sit = data['oib']
 	smos_sit = data['smos']
 	cryo_sit = data['uit'][2]  # Third element is the SIT data
-	
 
-	# Flatten
-	oib  = oib_sit.flatten()
-	smos = smos_sit.flatten()
-	cryo = cryo_sit.flatten()
-
-	# Handle NaNs
+	# Flatten and clean
+	oib, smos, cryo = oib_sit.flatten(), smos_sit.flatten(), cryo_sit.flatten()
 	nan_mask = ~np.isnan(oib) & ~np.isnan(smos) & ~np.isnan(cryo)
 	oib, smos, cryo = [arr[nan_mask] for arr in (oib, smos, cryo)]
-	
+
+	# Restrict to physical range
 	pr_range_mask = (cryo >= 0) & (cryo <= 1) & (smos >= 0) & (smos <= 1)
 	cryo = cryo[pr_range_mask]
 	smos = smos[pr_range_mask]
 	oib = oib[pr_range_mask]
  
-	# Bin
+	print(f"Number of valid data points: {len(oib)}")
+
+	# Bin the data
 	binned_oib_cryo_data, binned_oib_smos_data = [], []
 	for i in range(len(bins) - 1):
 		bin_mask = (oib >= bins[i]) & (oib < bins[i + 1])
 		binned_oib_cryo_data.append(cryo[bin_mask])
 		binned_oib_smos_data.append(smos[bin_mask])
-  
+
 	# --- Plot ---
-	fig = plt.figure(figsize=(10, 5))  # 10x10 figure size
-	box_width = 0.4
-	gap = (1 - 2 * box_width) / 3
+	fig, axs = plt.subplots(1, 2, figsize=(6.733, 3.6))
+	ax1, ax2 = axs
 
-	ax1 = fig.add_axes([gap, 0.2, box_width, 0.6])
-	ax2 = fig.add_axes([2 * gap + box_width, 0.2, box_width, 0.6])
+	# Box 1: UiT vs OIB
+	ax1.boxplot(binned_oib_cryo_data, labels=bin_labels,
+				medianprops=dict(color='black'),
+				meanprops=dict(color="#f7022a"), showmeans=True, meanline=True,
+				patch_artist=True, showfliers=False,
+				boxprops=dict(facecolor='lightgray', alpha=0.6))
+	ax1.plot([], [], "--", linewidth=1, color="#f7022a", label="Mean")
+	ax1.plot([], [], "-", linewidth=1, color="black", label="Median")
 
-	# Left box plot
-	ax1.boxplot(binned_oib_cryo_data, labels = bin_labels, medianprops=dict(color='black'), meanprops=dict(color="#f7022a"), showmeans=True, meanline=True, patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
-	ax1.plot([], [], "--", linewidth=1, color = "#f7022a", label = "Mean")
-	ax1.plot([], [], "-", linewidth=1, color = "black", label = "Median")
- 
-	# scatter 
 	for i, data in enumerate(binned_oib_cryo_data):
 		x = np.random.normal(i + 1, 0.05, size=len(data))
 		ax1.scatter(x, data, color='green', alpha=0.7, edgecolor="none", linewidth=0.)
+
 	ax1.set_ylabel('UiT SIT [m]')
 	ax1.set_xlabel('OIB SIT bins [m]')
 	ax1.tick_params(axis='both', direction='in')
-	ax1.legend(frameon=False, loc='upper left', bbox_to_anchor=(0.0, 1.08), ncol=2, borderaxespad=0.0, handletextpad=0.3)
-	
-	
-	# Right box plot
-	#ax2.boxplot(binned_oib_smos_data, labels = bin_labels, medianprops=dict(color='black'), patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
-	ax2.boxplot(binned_oib_smos_data, labels = bin_labels, medianprops=dict(color='black'), showmeans=True, meanline=True, meanprops=dict(color="#f7022a"), patch_artist=True, showfliers=False, boxprops=dict(facecolor='lightgray', alpha=0.6))
-	ax2.plot([], [], "--", linewidth=1, color = "#f7022a", label = "Mean")
-	ax2.plot([], [], "-", linewidth=1, color = "black", label = "Median")
+	ax1.grid(axis='y', linestyle='--', alpha=0.5)
+	ax1.legend(frameon=False, loc='upper left', bbox_to_anchor=(0.0, 1.08),
+			   ncol=2, borderaxespad=0.0, handletextpad=0.3)
+
+	# Box 2: SMOS vs OIB
+	ax2.boxplot(binned_oib_smos_data, labels=bin_labels,
+				medianprops=dict(color='black'),
+				meanprops=dict(color="#f7022a"), showmeans=True, meanline=True,
+				patch_artist=True, showfliers=False,
+				boxprops=dict(facecolor='lightgray', alpha=0.6))
+	ax2.plot([], [], "--", linewidth=1, color="#f7022a", label="Mean")
+	ax2.plot([], [], "-", linewidth=1, color="black", label="Median")
+
 	for i, data in enumerate(binned_oib_smos_data):
 		x = np.random.normal(i + 1, 0.05, size=len(data))
 		ax2.scatter(x, data, color='blue', alpha=0.7, edgecolor="none", linewidth=0.)
+
 	ax2.set_ylabel('SMOS SIT [m]')
 	ax2.set_xlabel('OIB SIT bins [m]')
 	ax2.tick_params(axis='both', direction='in')
-	#ax2.legend(frameon=False, loc='upper left', bbox_to_anchor=(0.5, 1.08), ncol=2, borderaxespad=0.0, handletextpad=0.3)
-
-	# Add grid lines
-	ax1.grid(axis='y', linestyle='--', alpha=0.5)
 	ax2.grid(axis='y', linestyle='--', alpha=0.5)
-
-	plt.show()
+	
+	plt.subplots_adjust(left=0.076, right=1, top=0.955, bottom=0.112, wspace=0.2)
+	plt.savefig(r'C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Figures\OIB validations - CryoSat and SMOS\OIB_box_scatter_plot_WithCryoRangeFiltering.png', dpi=300, bbox_inches='tight')
+	#plt.show()
 
 def heat_map(data):
 	bins = [0, 0.2, 0.4, 0.6, 0.8, 1]
@@ -825,7 +829,7 @@ if __name__ == "__main__":
 	#plot_sit(resampled_data, data['uit']['lat'], data['uit']['lon'])
  
 	#bar_hist_plot(resampled_data)
-	#box_plot(resampled_data)
+	box_plot(resampled_data)
 	#heat_map(resampled_data)
 	#stat_matrics_all(resampled_data)
-	stat_matrics_comp(resampled_data)
+	#stat_matrics_comp(resampled_data)
