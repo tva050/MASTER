@@ -13,6 +13,7 @@ from matplotlib.ticker import PercentFormatter
 from scipy.stats import binned_statistic_2d
 import matplotlib.gridspec as gridspec
 import statistics as stats
+import matplotlib.path as mpath
 
 
 EM_bird_path = r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Data\SMOSice\EmBird"
@@ -227,31 +228,40 @@ plt.rcParams.update({
 
 
 def plot_EM_bird(EM_bird):
-	fig = plt.figure(figsize=(6.733, 5))
-	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
-	ax.set_extent([1.7e5, 7.45e5, -1.52e6, -8.39e5], ccrs.NorthPolarStereo())
+	fig = plt.figure(figsize=(10, 10))
+	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo(central_longitude=0))
 
-	ax.coastlines()
-	ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1, zorder=2)
-	ax.add_feature(cfeature.OCEAN, facecolor="lightgray", alpha=0.5, zorder=1)
-	ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=3)
-	ax.add_feature(cfeature.RIVERS, edgecolor='lightgray', facecolor="white", linewidth=0.5, alpha=0.5, zorder=4)
-	ax.add_feature(cfeature.COASTLINE, color="black", linewidth=0.1, zorder=5)
-	ax.gridlines(draw_labels=True, color="dimgray", zorder=7)
+	# Set the extent to cover latitudes from 60°N to 90°N
+	ax.set_extent([-180, 180, 65, 90], crs=ccrs.PlateCarree())
+
+	# Define a circular boundary in axes coordinates
+	theta = np.linspace(0, 2 * np.pi, 100)
+	center = [0.5, 0.5]
+	radius = 0.5
+	circle = mpath.Path(np.vstack([np.sin(theta), np.cos(theta)]).T * radius + center)
+	ax.set_boundary(circle, transform=ax.transAxes)
 
 	unique_days_EM = EM_bird["DateTime"].dt.strftime('%Y-%m-%d').unique()
 	cmap_EM = plt.get_cmap("plasma", len(unique_days_EM))
 	for i, day in enumerate(unique_days_EM):
 		group = EM_bird[EM_bird["DateTime"].dt.strftime('%Y-%m-%d') == day]
 		ax.scatter(group["Longitude"], group["Latitude"], color=cmap_EM(i), s=1, transform=ccrs.PlateCarree(), label=day, zorder=6)
-
-	plt.legend(markerscale=5, loc='lower left')
+	plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Thesis\hem_paths_bg.png", dpi=300, bbox_inches='tight', transparent=True)
 	plt.show()
 
 def plot_als(als_data):
-	fig = plt.figure(figsize=(6.733, 5))
-	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo())
-	ax.set_extent([1.7e5, 7.45e5, -1.52e6, -8.39e5], ccrs.NorthPolarStereo())
+	fig = plt.figure(figsize=(10, 10))
+	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo(central_longitude=0))
+
+	# Set the extent to cover latitudes from 60°N to 90°N
+	ax.set_extent([-180, 180, 65, 90], crs=ccrs.PlateCarree())
+
+	# Define a circular boundary in axes coordinates
+	theta = np.linspace(0, 2 * np.pi, 100)
+	center = [0.5, 0.5]
+	radius = 0.5
+	circle = mpath.Path(np.vstack([np.sin(theta), np.cos(theta)]).T * radius + center)
+	ax.set_boundary(circle, transform=ax.transAxes)
 
 	#ax.coastlines()
 	#ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1, zorder=2)
@@ -265,9 +275,17 @@ def plot_als(als_data):
 	cmap_ALS = plt.get_cmap("viridis", len(unique_files))
 	for i, file in enumerate(unique_files):
 		group = als_data[als_data["SourceFile"] == file]
-		ax.scatter(group["Longitude"], group["Latitude"], color=cmap_ALS(i), s=1, transform=ccrs.PlateCarree(), label=file.split(".")[0], zorder=6)
-
-	plt.legend(markerscale=5, loc='lower left')
+		sc=ax.scatter(group["Longitude"], group["Latitude"], color=cmap_ALS(i), s=1, transform=ccrs.PlateCarree(), label=file.split(".")[0], zorder=6)
+	#meridians = np.arange(10, 360, 20)
+	#for lon in meridians:
+	#	latitudes = np.linspace(60, 90, 100)  # or 0 to 90 if you want full lines
+	#	longitudes = np.full_like(latitudes, lon)
+	#	ax.plot(longitudes, latitudes,
+	#			transform=ccrs.PlateCarree(),
+	#			color='gray', linewidth=0.5, zorder=0)
+	#plt.colorbar(sc,orientation='vertical', pad=0.05, shrink=0.7)
+	#plt.legend(markerscale=5, loc='lower left')
+	plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Thesis\als_paths_bg.png", dpi=300, bbox_inches='tight', transparent=True)
 	plt.show()
 
 def bird_als_paths(als_data, EM_bird_data):
@@ -1234,7 +1252,7 @@ if __name__ == "__main__":
 	#smos_data = get_smos(smos_L3)
 	#get_smos_single(smos_L3_single)
 
-	#plot_EM_bird(em_bird_data)
+	plot_EM_bird(em_bird_data)
 	#plot_als(als_all_data)
 	##bird_als_paths(als_data, em_bird_data)
 	#plot_L2(uit_L2)
@@ -1248,7 +1266,7 @@ if __name__ == "__main__":
 
 # Statistical metrics
 	#hem_stats()
-	hem_stats_bined()
+	#hem_stats_bined()
 
 # ------ ALS ------ #
 # CS

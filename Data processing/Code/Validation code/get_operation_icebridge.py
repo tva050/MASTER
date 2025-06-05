@@ -329,20 +329,23 @@ def plot_flight_paths_all(data):
 	all_lats = np.concatenate(oib_lats)
 	all_lons = np.concatenate(oib_lons)
 
-	fig = plt.figure(figsize=(6.733, 4.5))
-	ax  = fig.add_subplot(1,1,1, projection=ccrs.NorthPolarStereo())
-	ax.set_extent([-3e6, 3e6, -3e6, 3e6], ccrs.NorthPolarStereo())
+	# Create figure and axis with North Polar Stereographic projection
+	fig = plt.figure(figsize=(10, 10))
+	ax = fig.add_subplot(1, 1, 1, projection=ccrs.NorthPolarStereo(central_longitude=0))
 
-	# map features
-	ax.coastlines()
-	ax.add_feature(cfeature.LAND, facecolor="gray", alpha=1,   zorder=2)
-	ax.add_feature(cfeature.OCEAN,facecolor="lightgray",alpha=0.5,zorder=1)
-	ax.add_feature(cfeature.LAKES,edgecolor='gray',facecolor="white",
-				   linewidth=0.5,alpha=0.5,zorder=3)
-	ax.add_feature(cfeature.RIVERS,edgecolor='lightgray',facecolor="white",
-				   linewidth=0.5,alpha=0.5,zorder=4)
-	ax.add_feature(cfeature.COASTLINE,color="black",linewidth=0.1,zorder=5)
-	ax.gridlines(draw_labels=True, color="dimgray", zorder=7)
+	# Set the extent to cover latitudes from 60°N to 90°N
+	ax.set_extent([-180, 180, 65, 90], crs=ccrs.PlateCarree())
+
+	# Define a circular boundary in axes coordinates
+	theta = np.linspace(0, 2 * np.pi, 100)
+	center = [0.5, 0.5]
+	radius = 0.5
+	circle = mpath.Path(np.vstack([np.sin(theta), np.cos(theta)]).T * radius + center)
+	ax.set_boundary(circle, transform=ax.transAxes)
+	
+	#ax.add_feature(cfeature.LAND, color='lightgray', zorder=2)
+	#ax.add_feature(cfeature.LAKES, edgecolor='gray', facecolor='white', linewidth=0.5, zorder=3)
+	#ax.add_feature(cfeature.COASTLINE, color='gray', linewidth=0.5, zorder=4)
 
 	# 1) All flight paths combined, light grey
 	#ax.scatter(all_lons, all_lats, s=0.5, color='lightgray', label='All OIB', transform=ccrs.PlateCarree(), zorder=6)
@@ -353,14 +356,17 @@ def plot_flight_paths_all(data):
 	for idx, (yr, lats, lons) in enumerate(zip(years, oib_lats, oib_lons)):
 		ax.scatter(lons, lats, s=1, linewidth=0, color=cmap(idx), label=f'OIB {yr}', transform=ccrs.PlateCarree(), zorder=7)
 
-	# circular boundary like your original
-	theta = np.linspace(0, 2*np.pi, 100)
-	verts = np.vstack([np.sin(theta), np.cos(theta)]).T
-	circle = mpath.Path(verts * 0.5 + 0.5)  # radius=0.5, center=(0.5,0.5)
-	ax.set_boundary(circle, transform=ax.transAxes)
 
-	plt.legend(markerscale=5, loc='lower left', ncols = 2, fontsize=10, handletextpad=0.3, bbox_to_anchor=(0., 1.0), borderaxespad=0.0)
-	#plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Data processing\Figures\OIB validations - CryoSat and SMOS\OIB_all_flight_paths.png", dpi=300, bbox_inches='tight')
+	#meridians = np.arange(10, 360, 20)
+	#for lon in meridians:
+	#	latitudes = np.linspace(60, 90, 100)  # or 0 to 90 if you want full lines
+	#	longitudes = np.full_like(latitudes, lon)
+	#	ax.plot(longitudes, latitudes,
+	#			transform=ccrs.PlateCarree(),
+	#			color='gray', linewidth=0.5, zorder=0)
+
+	#plt.legend(markerscale=5, loc='lower left', ncols = 2, fontsize=10, handletextpad=0.3, bbox_to_anchor=(0., 1.0), borderaxespad=0.0)
+	plt.savefig(r"C:\Users\trym7\OneDrive - UiT Office 365\skole\MASTER\Thesis\OIB_all_flight_paths.png", dpi=300, bbox_inches='tight', transparent=True)
 	plt.show()
 
 
@@ -824,12 +830,12 @@ if __name__ == "__main__":
 	reprojected_data = reproject_all_data(data)
 	resampled_data = resample_all_data(reprojected_data, radius=12500)
 	
-	#plot_flight_paths_all(data)
+	plot_flight_paths_all(data)
 	#histogram_oib(data)
 	#plot_sit(resampled_data, data['uit']['lat'], data['uit']['lon'])
  
 	#bar_hist_plot(resampled_data)
-	box_plot(resampled_data)
+	#box_plot(resampled_data)
 	#heat_map(resampled_data)
 	#stat_matrics_all(resampled_data)
 	#stat_matrics_comp(resampled_data)
